@@ -1,6 +1,6 @@
 // URL do Apps Script da planilha CMV
 // Após publicar o Apps Script, cole a URL aqui
-const APPS_SCRIPT_URL = 'COLE_A_URL_DO_APPS_SCRIPT_AQUI';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwyisrFoxxf9vYV0Kj2Hm_Iwu5a5KxUczTOWVYENU4PU6_vmVnzvzUgKOE73OABYp26Xg/exec';
 
 const pct = v => parseFloat(v) || 0;
 const brl = v => parseFloat(String(v).replace(',', '.')) || 0;
