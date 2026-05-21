@@ -1,75 +1,109 @@
-// URL do Apps Script da planilha CMV
-// Após publicar o Apps Script, cole a URL aqui
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwyisrFoxxf9vYV0Kj2Hm_Iwu5a5KxUczTOWVYENU4PU6_vmVnzvzUgKOE73OABYp26Xg/exec';
+import { APPS_SCRIPT_URL, MAPA_LOJAS } from './config';
 
-const pct = v => parseFloat(v) || 0;
-const brl = v => parseFloat(String(v).replace(',', '.')) || 0;
+const n = v => parseFloat(String(v).replace(',', '.')) || 0;
+const s = v => String(v ?? '').trim();
 
+// ── Parser: ficha técnica ──────────────────────────────────
 function parseFicha(r) {
+  const codPa    = s(r.cod_pa);
+  const codComp  = s(r.cod_componente);
+  const cmvPct   = n(r.cmv_pct);
+  const custoIngr = n(r.custo_ingr);
+  const precoVenda = n(r.preco_venda);
   return {
-    codPa:        String(r.cod_pa || r.COD_PA || '').trim(),
-    nomePa:       String(r.nome_pa || r.NOME_PA || '').trim(),
-    categoria:    String(r.categoria || r.CATEGORIA || '').trim(),
-    subcategoria: String(r.subcategoria || r.SUBCATEGORIA || '').trim(),
-    precoVenda:   brl(r.preco_venda || r.PRECO_VENDA),
-    custoIngr:    brl(r.custo_ingr || r.CUSTO_INGR),
-    cmvPct:       pct(r.cmv_pct || r.CMV_PCT),
-    precoSugerido: brl(r.preco_suge_30pct || r.PRECO_SUGE_30PCT),
+    codPa,
+    skuZig:       s(r.sku_zig),    // preenchido pelo Apps Script via cruzamento
+    nomePa:       s(r.nome_pa),
+    categoria:    s(r.categoria),
+    subcategoria: s(r.subcategoria),
+    tipo:         s(r.tipo),        // 'produto_final' ou 'ingrediente'
+    // Ingrediente desta linha
+    codComponente:  codComp,
+    descComponente: s(r.desc_componente),
+    qtd:            n(r.qtd),
+    und:            s(r.und),
+    custoUnit:      n(r.custo_unit),
+    custoIngr,
+    precoVenda,
+    cmvPct,
+    margemContribR:   precoVenda > 0 ? precoVenda - custoIngr : 0,
+    margemContribPct: precoVenda > 0 ? (precoVenda - custoIngr) / precoVenda : 0,
+    precoSugerido:    custoIngr > 0 ? custoIngr / 0.30 : 0,
   };
 }
 
+// ── Parser: desperdício ────────────────────────────────────
+function parseDesperdicio(r) {
+  const unidade = s(r.unidade).toUpperCase().trim()
+    .replace('CARINAS ', 'CARINAS').replace('AVARIAS ', 'AVARIAS');
+  return {
+    data:          s(r.data),
+    mes:           s(r.mes).toLowerCase(),
+    semana:        n(r.semana),
+    unidade:       unidade,
+    funcionario:   s(r.funcionario),
+    produto:       s(r.produto),
+    quantidade:    n(r.quantidade),
+    custoUnit:     n(r.custo_unit),
+    custoTotal:    n(r.custo_total),
+    valorVenda:    n(r.valor_venda),
+    classificacao: s(r.classificacao).trim(),
+    justificativa: s(r.justificativa),
+  };
+}
+
+// ── Parser: histórico CMV ──────────────────────────────────
 function parseHistorico(r) {
   return {
-    semanaISO:    String(r.semana_iso || r.SEMANA_ISO || '').trim(),
-    dataRef:      String(r.data_ref || r.DATA_REF || '').trim(),
-    codPa:        String(r.cod_pa || r.COD_PA || '').trim(),
-    nomePa:       String(r.nome_pa || r.NOME_PA || '').trim(),
-    categoria:    String(r.categoria || r.CATEGORIA || '').trim(),
-    subcategoria: String(r.subcategoria || r.SUBCATEGORIA || '').trim(),
-    loja:         String(r.loja || r.LOJA || '').trim(),
-    precoVenda:   brl(r.preco_venda || r.PRECO_VENDA),
-    custoCmv:     brl(r.custo_cmv || r.CUSTO_CMV),
-    cmvPct:       pct(r.cmv_pct || r.CMV_PCT),
-    cmvPctAnt:    pct(r.cmv_pct_anterior || r.CMV_PCT_ANTERIOR),
-    deltaPp:      pct(r.delta_pp || r.DELTA_PP),
-    status:       String(r.status || r.STATUS || 'OK').trim(),
-    alerta:       String(r.alerta || r.ALERTA || 'NÃO').trim(),
+    semanaISO:    s(r.semana_iso),
+    dataRef:      s(r.data_ref),
+    codPa:        s(r.cod_pa),
+    nomePa:       s(r.nome_pa),
+    categoria:    s(r.categoria),
+    subcategoria: s(r.subcategoria),
+    loja:         s(r.loja),
+    canal:        s(r.canal),
+    precoVenda:   n(r.preco_venda),
+    custoCmv:     n(r.custo_cmv),
+    cmvPct:       n(r.cmv_pct),
+    cmvPctAnt:    n(r.cmv_pct_anterior),
+    deltaPp:      n(r.delta_pp),
+    status:       s(r.status),
   };
 }
 
-function parseDesperdicio(r) {
-  return {
-    id:            String(r.id || r.ID || '').trim(),
-    data:          String(r.data || r.DATA || '').trim(),
-    mes:           String(r.mes || r.MES || '').trim().toLowerCase(),
-    unidade:       String(r.unidade || r.UNIDADE || '').trim(),
-    produto:       String(r.produto || r.PRODUTO || '').trim(),
-    quantidade:    brl(r.quantidade || r.QUANTIDADE),
-    custoTotal:    brl(r.custo_total || r.CUSTO_TOTAL),
-    classificacao: String(r.classificacao || r.CLASSIFICACAO || '').trim(),
-  };
+// ── Fetch com fallback ─────────────────────────────────────
+async function fetchTipo(tipo) {
+  try {
+    const res = await fetch(`${APPS_SCRIPT_URL}?tipo=${tipo}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (e) {
+    console.warn(`[loader] Falha ao buscar ${tipo}:`, e.message);
+    return {};
+  }
 }
 
+// ── Entry point ────────────────────────────────────────────
 export async function loadCMVData() {
-  const [resFichas, resHistorico, resDesperdicio] = await Promise.allSettled([
-    fetch(`${APPS_SCRIPT_URL}?tipo=fichas`).then(r => r.json()),
-    fetch(`${APPS_SCRIPT_URL}?tipo=historico`).then(r => r.json()),
-    fetch(`${APPS_SCRIPT_URL}?tipo=desperdicio`).then(r => r.json()),
+  const [resFichas, resHistorico, resDesperdicio] = await Promise.all([
+    fetchTipo('fichas'),
+    fetchTipo('historico'),
+    fetchTipo('desperdicio'),
   ]);
 
-  const fichas = resFichas.status === 'fulfilled' && resFichas.value?.fichas
-    ? resFichas.value.fichas.map(parseFicha).filter(r => r.codPa && r.nomePa)
-    : [];
+  const fichas = (resFichas.fichas ?? [])
+    .map(parseFicha)
+    .filter(r => r.codPa && r.nomePa);
 
-  const historico = resHistorico.status === 'fulfilled' && resHistorico.value?.historico
-    ? resHistorico.value.historico.map(parseHistorico).filter(r => r.semanaISO && r.nomePa)
-    : [];
+  const historico = (resHistorico.historico ?? [])
+    .map(parseHistorico)
+    .filter(r => r.semanaISO && r.nomePa);
 
-  const desperdicio = resDesperdicio.status === 'fulfilled' && resDesperdicio.value?.desperdicio
-    ? resDesperdicio.value.desperdicio.map(parseDesperdicio).filter(r => r.unidade)
-    : [];
+  const desperdicio = (resDesperdicio.desperdicio ?? [])
+    .map(parseDesperdicio)
+    .filter(r => r.unidade && r.custoTotal > 0);
 
-  console.log(`[CMV loader] Fichas: ${fichas.length} | Histórico: ${historico.length} | Desperdício: ${desperdicio.length}`);
-
+  console.log(`[CMV] fichas=${fichas.length} histórico=${historico.length} desperdício=${desperdicio.length}`);
   return { fichas, historico, desperdicio };
 }

@@ -1,10 +1,13 @@
 import { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { loadCMVData } from '../data/loader';
+import { META_CMV, LOJAS } from '../data/config';
 
 const Ctx = createContext(null);
 
 const MESES_ORDER = ['janeiro','fevereiro','março','abril','maio','junho',
                      'julho','agosto','setembro','outubro','novembro','dezembro'];
+
+function avg(arr) { return arr.length ? arr.reduce((s,v)=>s+v,0)/arr.length : 0; }
 
 export function CMVProvider({ children }) {
   const [fichas,      setFichas]      = useState([]);
@@ -13,10 +16,12 @@ export function CMVProvider({ children }) {
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState(null);
 
-  // Filtros
-  const [lojaFiltro,      setLojaFiltro]      = useState('Todas');
-  const [categoriaFiltro, setCategoriaFiltro] = useState('Todas');
-  const [mesFiltro,       setMesFiltro]       = useState('Todos');
+  // ── Filtros ────────────────────────────────────────────
+  const [filtroLoja,    setFiltroLoja]    = useState('Todas');
+  const [filtroCanal,   setFiltroCanal]   = useState('Todos');
+  const [filtroCat,     setFiltroCat]     = useState('Todas');
+  const [filtroMes,     setFiltroMes]     = useState('Todos');
+  const [filtroPeriodo, setFiltroPeriodo] = useState('Todos'); // Todos | Almoço | Jantar/Noite
 
   useEffect(() => {
     loadCMVData()
@@ -29,100 +34,223 @@ export function CMVProvider({ children }) {
       .catch(e => { setError(e.message); setLoading(false); });
   }, []);
 
-  // Listas de opções para filtros
-  const lojas = useMemo(() =>
-    ['Todas', ...new Set(historico.map(r => r.loja))].filter(Boolean),
-  [historico]);
+  // ── Opções de filtro ───────────────────────────────────
+  const opcoesLojas = useMemo(() =>
+    ['Todas', ...new Set([
+      ...historico.map(r=>r.loja),
+      ...desperdicio.map(r=>r.unidade),
+    ].filter(Boolean))].sort(),
+  [historico, desperdicio]);
 
-  const categorias = useMemo(() =>
-    ['Todas', ...new Set(fichas.map(r => r.categoria))].filter(Boolean),
+  const opcoesCats = useMemo(() =>
+    ['Todas', ...new Set(fichas.map(r=>r.categoria).filter(Boolean))].sort(),
   [fichas]);
 
-  const meses = useMemo(() => {
-    const ms = [...new Set(desperdicio.map(r => r.mes))].filter(Boolean);
-    return ['Todos', ...ms.sort((a,b) => MESES_ORDER.indexOf(a) - MESES_ORDER.indexOf(b))];
+  const opcoesMeses = useMemo(() => {
+    const ms = [...new Set(desperdicio.map(r=>r.mes).filter(Boolean))];
+    return ['Todos', ...ms.sort((a,b)=>MESES_ORDER.indexOf(a)-MESES_ORDER.indexOf(b))];
   }, [desperdicio]);
 
-  // Dados filtrados
-  const fichasFiltradas = useMemo(() =>
-    fichas.filter(r =>
-      (categoriaFiltro === 'Todas' || r.categoria === categoriaFiltro)
+  // ── Produtos únicos (agrupados por PA, não por ingrediente) ───
+  // Cada produto final aparece uma vez com seus totais
+  const produtosUnicos = useMemo(() => {
+    const map = new Map();
+    fichas.forEach(r => {
+      const key = r.codPa;
+      if (!map.has(key)) {
+        map.set(key, {
+          codPa:        r.codPa,
+          skuZig:       r.skuZig,
+          nomePa:       r.nomePa,
+          categoria:    r.categoria,
+          subcategoria: r.subcategoria,
+          precoVenda:   r.precoVenda,
+          custoIngr:    0,
+          cmvPct:       r.cmvPct,
+          margemContribR:   r.margemContribR,
+          margemContribPct: r.margemContribPct,
+          precoSugerido:    r.precoSugerido,
+          ingredientes: [],
+        });
+      }
+      map.get(key).ingredientes.push({
+        codComponente:  r.codComponente,
+        descComponente: r.descComponente,
+        qtd:            r.qtd,
+        und:            r.und,
+        custoUnit:      r.custoUnit,
+        custoIngr:      r.custoIngr,
+      });
+    });
+    // Recalcula custo total como soma dos ingredientes
+    map.forEach(p => {
+      p.custoIngr = p.ingredientes.reduce((s,i)=>s+i.custoIngr, 0);
+    });
+    return [...map.values()];
+  }, [fichas]);
+
+  // ── Filtros aplicados ──────────────────────────────────
+  const produtosFiltrados = useMemo(() =>
+    produtosUnicos.filter(r =>
+      (filtroCat === 'Todas' || r.categoria === filtroCat)
     ),
-  [fichas, categoriaFiltro]);
+  [produtosUnicos, filtroCat]);
 
   const historicoFiltrado = useMemo(() =>
     historico.filter(r =>
-      (lojaFiltro === 'Todas' || r.loja === lojaFiltro) &&
-      (categoriaFiltro === 'Todas' || r.categoria === categoriaFiltro)
+      (filtroLoja  === 'Todas' || r.loja  === filtroLoja) &&
+      (filtroCanal === 'Todos' || r.canal === filtroCanal) &&
+      (filtroCat   === 'Todas' || r.categoria === filtroCat)
     ),
-  [historico, lojaFiltro, categoriaFiltro]);
+  [historico, filtroLoja, filtroCanal, filtroCat]);
 
   const desperdicioFiltrado = useMemo(() =>
     desperdicio.filter(r =>
-      (lojaFiltro === 'Todas' || r.unidade === lojaFiltro) &&
-      (mesFiltro === 'Todos' || r.mes === mesFiltro)
+      (filtroLoja === 'Todas' || r.unidade === filtroLoja) &&
+      (filtroMes  === 'Todos' || r.mes === filtroMes)
     ),
-  [desperdicio, lojaFiltro, mesFiltro]);
+  [desperdicio, filtroLoja, filtroMes]);
 
-  // KPIs consolidados
+  // ── KPIs home ─────────────────────────────────────────
   const kpis = useMemo(() => {
-    const semanas = [...new Set(historicoFiltrado.map(r => r.semanaISO))].sort();
-    const semanaAtual = semanas.at(-1) ?? '';
-    const dadosAtuais = historicoFiltrado.filter(r => r.semanaISO === semanaAtual);
+    const semanas = [...new Set(historicoFiltrado.map(r=>r.semanaISO))].sort();
+    const semAtual = semanas.at(-1) ?? '';
+    const semAnt   = semanas.at(-2) ?? '';
+    const dadosAt  = historicoFiltrado.filter(r=>r.semanaISO===semAtual);
+    const dadosAnt = historicoFiltrado.filter(r=>r.semanaISO===semAnt);
 
-    const cmvMedio = dadosAtuais.length
-      ? dadosAtuais.reduce((s,r) => s + r.cmvPct, 0) / dadosAtuais.length
-      : 0;
+    const cmvAtual = avg(dadosAt.map(r=>r.cmvPct));
+    const cmvAnt   = avg(dadosAnt.map(r=>r.cmvPct));
+    const deltaCMV = cmvAtual - cmvAnt;
 
-    const criticos = fichasFiltradas.filter(r => r.cmvPct > 1).length;
-    const atencao  = fichasFiltradas.filter(r => r.cmvPct >= 0.3 && r.cmvPct < 1).length;
+    const criticos = produtosFiltrados.filter(r=>r.cmvPct>1).length;
+    const atencao  = produtosFiltrados.filter(r=>r.cmvPct>=META_CMV&&r.cmvPct<1).length;
+    const okCount  = produtosFiltrados.filter(r=>r.cmvPct<META_CMV).length;
 
-    const totalDesp = desperdicioFiltrado.reduce((s,r) => s + r.custoTotal, 0);
-    const unidades  = new Set(historicoFiltrado.map(r => r.loja)).size;
+    const totalDesp = desperdicioFiltrado.reduce((s,r)=>s+r.custoTotal,0);
+    const unidades  = new Set([
+      ...dadosAt.map(r=>r.loja),
+      ...desperdicioFiltrado.map(r=>r.unidade),
+    ]).size;
 
-    return { cmvMedio, criticos, atencao, totalDesp, unidades, semanaAtual };
-  }, [fichasFiltradas, historicoFiltrado, desperdicioFiltrado]);
+    // Margem média
+    const margem = avg(produtosFiltrados.map(r=>r.margemContribPct));
 
-  // Desperdício por unidade (pivot mensal)
-  const desperdicioByUnidade = useMemo(() => {
-    const mesesVisiveis = mesFiltro === 'Todos'
-      ? MESES_ORDER.filter(m => desperdicio.some(r => r.mes === m))
-      : [mesFiltro];
+    return {
+      cmvAtual, cmvAnt, deltaCMV,
+      criticos, atencao, okCount,
+      totalDesp, unidades, margem,
+      semAtual,
+    };
+  }, [produtosFiltrados, historicoFiltrado, desperdicioFiltrado]);
 
-    const unidades = [...new Set(desperdicio.map(r => r.unidade))].filter(Boolean);
-    return unidades.map(un => {
-      const rows = desperdicioFiltrado.filter(r => r.unidade === un);
-      const porMes = {};
-      mesesVisiveis.forEach(m => {
-        porMes[m] = rows.filter(r => r.mes === m).reduce((s,r) => s + r.custoTotal, 0);
-      });
-      return { unidade: un, porMes, total: rows.reduce((s,r) => s + r.custoTotal, 0) };
-    }).sort((a,b) => b.total - a.total);
-  }, [desperdicio, desperdicioFiltrado, mesFiltro]);
-
-  // Evolução CMV mensal (para gráfico)
+  // ── Evolução semanal CMV ───────────────────────────────
   const evolucaoCMV = useMemo(() => {
-    const semanas = [...new Set(historicoFiltrado.map(r => r.semanaISO))].sort();
+    const semanas = [...new Set(historicoFiltrado.map(r=>r.semanaISO))].sort();
     return semanas.map(sem => {
-      const rows = historicoFiltrado.filter(r => r.semanaISO === sem);
-      const cmv  = rows.length ? rows.reduce((s,r) => s + r.cmvPct, 0) / rows.length : 0;
-      return { semana: sem, cmv: parseFloat((cmv * 100).toFixed(1)) };
+      const rows = historicoFiltrado.filter(r=>r.semanaISO===sem);
+      const cmv  = avg(rows.map(r=>r.cmvPct));
+      // Por categoria
+      const porCat = {};
+      [...new Set(rows.map(r=>r.categoria))].forEach(cat => {
+        const catRows = rows.filter(r=>r.categoria===cat);
+        porCat[cat] = parseFloat((avg(catRows.map(r=>r.cmvPct))*100).toFixed(1));
+      });
+      return { semana: sem.replace('2026-',''), cmv: parseFloat((cmv*100).toFixed(1)), ...porCat };
     });
   }, [historicoFiltrado]);
+
+  // ── Variação semanal por produto ───────────────────────
+  const variacaoSemanal = useMemo(() => {
+    const semanas = [...new Set(historicoFiltrado.map(r=>r.semanaISO))].sort();
+    const semAtual = semanas.at(-1) ?? '';
+    const dadosAt  = historicoFiltrado.filter(r=>r.semanaISO===semAtual);
+
+    const porProduto = new Map();
+    dadosAt.forEach(r => {
+      if (!porProduto.has(r.codPa)) porProduto.set(r.codPa, []);
+      porProduto.get(r.codPa).push(r);
+    });
+
+    return [...porProduto.values()].map(rows => {
+      const cmvAt  = avg(rows.map(r=>r.cmvPct));
+      const cmvAnt = avg(rows.map(r=>r.cmvPctAnt));
+      const delta  = cmvAt - cmvAnt;
+      return {
+        nomePa:      rows[0].nomePa,
+        categoria:   rows[0].categoria,
+        subcategoria:rows[0].subcategoria,
+        cmvAtual:    cmvAt,
+        cmvAnterior: cmvAnt,
+        deltaPp:     delta,
+        status:      rows[0].status,
+      };
+    }).sort((a,b) => b.cmvAtual - a.cmvAtual);
+  }, [historicoFiltrado]);
+
+  // ── Desperdício pivot por unidade ──────────────────────
+  const desperdicioByUnidade = useMemo(() => {
+    const mesesVisiveis = filtroMes === 'Todos'
+      ? MESES_ORDER.filter(m => desperdicio.some(r=>r.mes===m))
+      : [filtroMes];
+
+    const unidades = [...new Set(desperdicioFiltrado.map(r=>r.unidade))].filter(Boolean).sort();
+    return unidades.map(un => {
+      const rows = desperdicioFiltrado.filter(r=>r.unidade===un);
+      const porMes = {};
+      mesesVisiveis.forEach(m => {
+        porMes[m] = rows.filter(r=>r.mes===m).reduce((s,r)=>s+r.custoTotal,0);
+      });
+      return { unidade: un, porMes, total: rows.reduce((s,r)=>s+r.custoTotal,0) };
+    }).sort((a,b)=>b.total-a.total);
+  }, [desperdicio, desperdicioFiltrado, filtroMes]);
+
+  // ── Desperdício por classificação ──────────────────────
+  const desperdicioByClassificacao = useMemo(() => {
+    const map = {};
+    desperdicioFiltrado.forEach(r => {
+      const k = r.classificacao || 'Sem classificação';
+      map[k] = (map[k]||0) + r.custoTotal;
+    });
+    return Object.entries(map)
+      .map(([k,v]) => ({ classificacao: k, total: v }))
+      .sort((a,b)=>b.total-a.total);
+  }, [desperdicioFiltrado]);
+
+  // ── Margem por categoria ───────────────────────────────
+  const margemPorCategoria = useMemo(() => {
+    const cats = [...new Set(produtosFiltrados.map(r=>r.categoria))];
+    return cats.map(cat => {
+      const rows = produtosFiltrados.filter(r=>r.categoria===cat);
+      return {
+        categoria:    cat,
+        cmvMedio:     avg(rows.map(r=>r.cmvPct)),
+        margemMedia:  avg(rows.map(r=>r.margemContribPct)),
+        qtdProdutos:  rows.length,
+        criticos:     rows.filter(r=>r.cmvPct>1).length,
+        atencao:      rows.filter(r=>r.cmvPct>=META_CMV&&r.cmvPct<1).length,
+      };
+    }).sort((a,b)=>b.cmvMedio-a.cmvMedio);
+  }, [produtosFiltrados]);
 
   return (
     <Ctx.Provider value={{
       loading, error,
-      fichas: fichasFiltradas,
+      // Dados
+      produtos: produtosFiltrados,
       historico: historicoFiltrado,
       desperdicio: desperdicioFiltrado,
-      desperdicioByUnidade,
-      evolucaoCMV,
-      kpis,
-      lojas, categorias, meses,
-      lojaFiltro,      setLojaFiltro,
-      categoriaFiltro, setCategoriaFiltro,
-      mesFiltro,       setMesFiltro,
+      // Derivados
+      kpis, evolucaoCMV, variacaoSemanal,
+      desperdicioByUnidade, desperdicioByClassificacao,
+      margemPorCategoria,
+      // Filtros
+      opcoesLojas, opcoesCats, opcoesMeses,
+      filtroLoja,    setFiltroLoja,
+      filtroCanal,   setFiltroCanal,
+      filtroCat,     setFiltroCat,
+      filtroMes,     setFiltroMes,
+      filtroPeriodo, setFiltroPeriodo,
     }}>
       {children}
     </Ctx.Provider>

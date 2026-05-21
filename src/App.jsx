@@ -1,16 +1,14 @@
 import { useState } from 'react';
-import { CMVProvider } from './hooks/useCMV';
-import Sidebar   from './components/layout/Sidebar';
-import Header    from './components/layout/Header';
-import LoadingScreen from './components/ui/LoadingScreen';
+import { CMVProvider, useCMV } from './hooks/useCMV';
+import Sidebar       from './components/layout/Sidebar';
+import Header        from './components/layout/Header';
 import Home          from './components/pages/Home';
-import CMVCategorias from './components/pages/CMVCategorias';
+import Rentabilidade from './components/pages/Rentabilidade';
+import Volume        from './components/pages/Volume';
 import Desperdicio   from './components/pages/Desperdicio';
-import Produtos      from './components/pages/Produtos';
-import TeoricoReal   from './components/pages/TeoricoReal';
-import { useCMV }    from './hooks/useCMV';
+import Variacao      from './components/pages/Variacao';
 
-const PAGES = { home: Home, cmv: CMVCategorias, desperdicio: Desperdicio, produtos: Produtos, teorico: TeoricoReal };
+const PAGES = { home: Home, rentabilidade: Rentabilidade, volume: Volume, desperdicio: Desperdicio, variacao: Variacao };
 
 function Inner() {
   const [page, setPage] = useState('home');
@@ -23,25 +21,28 @@ function Inner() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header activePage={page} />
         <main className="flex-1 overflow-y-auto">
-          {loading  ? <LoadingScreen /> :
-           error    ? <ErrorScreen msg={error} /> :
-           <Page />}
+          {loading ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center">
+                <div className="w-8 h-8 border-2 border-brand-olive border-t-transparent rounded-full animate-spin mx-auto mb-3"/>
+                <p className="text-sm text-zinc-400">Carregando dados CMV...</p>
+              </div>
+            </div>
+          ) : error ? (
+            <div className="flex items-center justify-center h-full p-12 text-center">
+              <div>
+                <p className="text-4xl mb-4">⚠️</p>
+                <p className="font-semibold text-brand-black mb-2">Erro ao carregar dados</p>
+                <p className="text-sm text-zinc-400 max-w-md">{error}</p>
+                <p className="text-xs text-zinc-300 mt-3">
+                  Verifique se a URL do Apps Script está configurada em <code className="font-mono">src/data/config.js</code>
+                </p>
+              </div>
+            </div>
+          ) : (
+            <Page />
+          )}
         </main>
-      </div>
-    </div>
-  );
-}
-
-function ErrorScreen({ msg }) {
-  return (
-    <div className="flex-1 flex items-center justify-center p-12 text-center">
-      <div>
-        <p className="text-4xl mb-4">⚠️</p>
-        <p className="font-semibold text-brand-black mb-2">Erro ao carregar dados</p>
-        <p className="text-sm text-zinc-400 max-w-md">{msg}</p>
-        <p className="text-xs text-zinc-300 mt-3">
-          Verifique se a URL do Apps Script está configurada em <code className="font-mono">src/data/loader.js</code>
-        </p>
       </div>
     </div>
   );

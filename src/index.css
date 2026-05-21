@@ -1,9 +1,4 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-body {
-  font-family: 'DM Sans', sans-serif;
-  background: #FAFAF8;
-  color: #0D0D0D;
-}
+body { font-family: 'DM Sans', sans-serif; background: #FAFAF8; color: #0D0D0D; }
