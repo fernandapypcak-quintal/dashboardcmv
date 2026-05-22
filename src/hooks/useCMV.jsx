@@ -13,6 +13,7 @@ export function CMVProvider({ children }) {
   const [fichas,      setFichas]      = useState([]);
   const [historico,   setHistorico]   = useState([]);
   const [desperdicio, setDesperdicio] = useState([]);
+  const [vendas,     setVendas]     = useState([]);
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState(null);
 
@@ -25,10 +26,11 @@ export function CMVProvider({ children }) {
 
   useEffect(() => {
     loadCMVData()
-      .then(({ fichas, historico, desperdicio }) => {
+      .then(({ fichas, historico, desperdicio, vendas }) => {
         setFichas(fichas);
         setHistorico(historico);
         setDesperdicio(desperdicio);
+        setVendas(vendas || []);
         setLoading(false);
       })
       .catch(e => { setError(e.message); setLoading(false); });
@@ -107,6 +109,52 @@ export function CMVProvider({ children }) {
       (filtroMes  === 'Todos' || r.mes === filtroMes)
     ),
   [desperdicio, filtroLoja, filtroMes]);
+
+  // ── Vendas filtradas ──────────────────────────────────────
+  const vendasFiltradas = useMemo(() =>
+    vendas.filter(r =>
+      (filtroLoja  === 'Todas' || r.loja  === filtroLoja) &&
+      (filtroCanal === 'Todos' || r.canal === filtroCanal) &&
+      (filtroPeriodo === 'Todos' || r.periodo === (filtroPeriodo === 'Almoço' ? 'almoco' : 'jantar'))
+    ),
+  [vendas, filtroLoja, filtroCanal, filtroPeriodo]);
+
+  // ── Volume × CMV cruzado (vendas + ficha técnica) ─────────
+  const volumePorProduto = useMemo(() => {
+    // Agrupa vendas por SKU
+    const vendaMap = {};
+    vendasFiltradas.forEach(v => {
+      const sku = v.productSku;
+      if (!vendaMap[sku]) vendaMap[sku] = { qtd: 0, receita: 0, nome: v.productName, categoria: v.productCategory, loja: v.loja, canal: v.canal };
+      vendaMap[sku].qtd     += v.count || 0;
+      vendaMap[sku].receita += (v.unitValue - v.discountValue) * (v.count || 0);
+    });
+
+    // Cruza com ficha técnica pelo SKU ZIG
+    return produtosUnicos.map(p => {
+      const venda = vendaMap[p.skuZig] || { qtd: 0, receita: 0 };
+      const custoTotal  = venda.qtd * p.custoIngr;
+      const receitaReal = venda.receita;
+      const cmvReal     = receitaReal > 0 ? custoTotal / receitaReal : p.cmvPct;
+      const margem      = receitaReal > 0 ? (receitaReal - custoTotal) / receitaReal : p.margemContribPct;
+      return {
+        codPa:        p.codPa,
+        skuZig:       p.skuZig,
+        nomePa:       p.nomePa,
+        categoria:    p.categoria,
+        subcategoria: p.subcategoria,
+        precoVenda:   p.precoVenda,
+        custoUnit:    p.custoIngr,
+        cmvTeorico:   p.cmvPct,
+        qtdVendida:   venda.qtd,
+        receitaReal,
+        custoTotal,
+        cmvReal,
+        margem,
+        temVenda:     venda.qtd > 0,
+      };
+    }).sort((a, b) => b.custoTotal - a.custoTotal);
+  }, [produtosUnicos, vendasFiltradas]);
 
   // ── KPIs home ─────────────────────────────────────────
   const kpis = useMemo(() => {
@@ -232,7 +280,7 @@ export function CMVProvider({ children }) {
       historico: historicoFiltrado,
       desperdicio: desperdicioFiltrado,
       // Derivados
-      kpis, evolucaoCMV, variacaoSemanal,
+      kpis, evolucaoCMV, variacaoSemanal, volumePorProduto, vendasFiltradas,
       desperdicioByUnidade, desperdicioByClassificacao,
       margemPorCategoria,
       // Filtros
