@@ -1,28 +1,25 @@
-import { APPS_SCRIPT_URL, MAPA_LOJAS, normalizaUnidade, LOJAS_ATIVAS } from './config';
+import { APPS_SCRIPT_URL, normalizaUnidade, LOJAS_ATIVAS } from './config';
 
 const n = v => parseFloat(String(v).replace(',', '.')) || 0;
 const s = v => String(v ?? '').trim();
 
 // ── Parser: ficha técnica ──────────────────────────────────
 function parseFicha(r) {
-  const codPa    = s(r.cod_pa);
-  const codComp  = s(r.cod_componente);
-  const cmvPct   = n(r.cmv_pct);
+  const codPa     = s(r.cod_pa);
   const custoIngr = n(r.custo_ingr);
   const precoVenda = n(r.preco_venda);
+  const cmvPct    = n(r.cmv_pct);
   return {
     codPa,
-    skuZig:       s(r.sku_zig),    // preenchido pelo Apps Script via cruzamento
-    nomePa:       s(r.nome_pa),
-    categoria:    s(r.categoria),
-    subcategoria: s(r.subcategoria),
-    tipo:         s(r.tipo),        // 'produto_final' ou 'ingrediente'
-    // Ingrediente desta linha
-    codComponente:  codComp,
-    descComponente: s(r.desc_componente),
-    qtd:            n(r.qtd),
-    und:            s(r.und),
-    custoUnit:      n(r.custo_unit),
+    skuZig:           s(r.sku_zig),
+    nomePa:           s(r.nome_pa),
+    categoria:        s(r.categoria),
+    subcategoria:     s(r.subcategoria),
+    codComponente:    s(r.cod_componente),
+    descComponente:   s(r.desc_componente),
+    qtd:              n(r.qtd),
+    und:              s(r.und),
+    custoUnit:        n(r.custo_unit),
     custoIngr,
     precoVenda,
     cmvPct,
@@ -34,12 +31,11 @@ function parseFicha(r) {
 
 // ── Parser: desperdício ────────────────────────────────────
 function parseDesperdicio(r) {
-  const unidade = normalizaUnidade(s(r.unidade));
   return {
     data:          s(r.data),
     mes:           s(r.mes).toLowerCase(),
     semana:        n(r.semana),
-    unidade:       unidade,
+    unidade:       normalizaUnidade(s(r.unidade)),
     funcionario:   s(r.funcionario),
     produto:       s(r.produto),
     quantidade:    n(r.quantidade),
@@ -51,22 +47,38 @@ function parseDesperdicio(r) {
   };
 }
 
-// ── Parser: histórico CMV ──────────────────────────────────
-function parseHistorico(r) {
+// ── Parser: vendas ZIG ─────────────────────────────────────
+function parseVenda(r) {
+  return {
+    transactionId:   s(r.transaction_id),
+    transactionDate: s(r.transaction_date),
+    eventDate:       s(r.event_date),
+    productSku:      s(r.product_sku),
+    productName:     s(r.product_name),
+    productCategory: s(r.product_category),
+    unitValue:       n(r.unit_value),
+    count:           n(r.count),
+    discountValue:   n(r.discount_value),
+    loja:            s(r.loja),
+    canal:           s(r.canal),
+    periodo:         s(r.periodo),
+  };
+}
+
+// ── Parser: histórico por produto ─────────────────────────
+function parseHistProd(r) {
   return {
     semanaISO:    s(r.semana_iso),
     dataRef:      s(r.data_ref),
     codPa:        s(r.cod_pa),
+    skuZig:       s(r.sku_zig),
     nomePa:       s(r.nome_pa),
     categoria:    s(r.categoria),
     subcategoria: s(r.subcategoria),
-    loja:         s(r.loja),
-    canal:        s(r.canal),
     precoVenda:   n(r.preco_venda),
-    custoCmv:     n(r.custo_cmv),
+    custoIngr:    n(r.custo_ingr),
     cmvPct:       n(r.cmv_pct),
-    cmvPctAnt:    n(r.cmv_pct_anterior),
-    deltaPp:      n(r.delta_pp),
+    margemPct:    n(r.margem_contrib_pct),
     status:       s(r.status),
   };
 }
@@ -100,21 +112,29 @@ export async function loadCMVData() {
   const historico = (resHistorico.historico ?? [])
     .filter(r => r.semana_iso && r.categoria)
     .map(r => ({
-      semanaISO:    String(r.semana_iso   || '').trim(),
-      dataRef:      String(r.data_ref     || '').trim(),
-      categoria:    String(r.categoria    || '').trim(),
-      subcategoria: String(r.subcategoria || '').trim(),
+      semanaISO:    s(r.semana_iso),
+      dataRef:      s(r.data_ref),
+      categoria:    s(r.categoria),
+      subcategoria: s(r.subcategoria),
       qtdProdutos:  n(r.qtd_produtos),
       cmvMedio:     n(r.cmv_medio),
       margemMedia:  n(r.margem_media),
       qtdCriticos:  n(r.qtd_criticos),
-      status:       String(r.status || 'OK').trim(),
+      status:       s(r.status) || 'OK',
     }));
 
   const desperdicio = (resDesperdicio.desperdicio ?? [])
     .map(parseDesperdicio)
     .filter(r => r.unidade && LOJAS_ATIVAS.includes(r.unidade) && r.custoTotal > 0);
 
-  console.log(`[CMV] fichas=${fichas.length} histórico=${historico.length} desperdício=${desperdicio.length}`);
-  return { fichas, historico, desperdicio };
+  const histProd = (resHistProd.hist_prod ?? [])
+    .filter(r => r.semana_iso && r.cod_pa)
+    .map(parseHistProd);
+
+  const vendas = (resVendas.vendas ?? [])
+    .map(parseVenda)
+    .filter(r => r.productSku && r.count > 0);
+
+  console.log(`[CMV] fichas=${fichas.length} histórico=${historico.length} desperdício=${desperdicio.length} histProd=${histProd.length} vendas=${vendas.length}`);
+  return { fichas, historico, desperdicio, histProd, vendas };
 }
