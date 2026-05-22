@@ -97,11 +97,12 @@ async function fetchTipo(tipo) {
 
 // ── Entry point ────────────────────────────────────────────
 export async function loadCMVData() {
-  const [resFichas, resDesperdicio, resHistorico, resHistProd, resVendas] = await Promise.all([
+  const [resFichas, resDesperdicio, resHistorico, resHistProd, resHistComp, resVendas] = await Promise.all([
     fetchTipo('fichas'),
     fetchTipo('desperdicio'),
     fetchTipo('historico'),
     fetchTipo('hist_prod'),
+    fetchTipo('hist_comp'),
     fetchTipo('vendas'),
   ]);
 
@@ -131,10 +132,29 @@ export async function loadCMVData() {
     .filter(r => r.semana_iso && r.cod_pa)
     .map(parseHistProd);
 
+  const histComp = (resHistComp.hist_comp ?? [])
+    .filter(r => r.semana_iso && r.cod_pa && r.cod_componente)
+    .map(r => ({
+      semanaISO:      String(r.semana_iso        || '').trim(),
+      dataRef:        String(r.data_ref          || '').trim(),
+      codPa:          String(r.cod_pa            || '').trim(),
+      nomePa:         String(r.nome_pa           || '').trim(),
+      categoria:      String(r.categoria         || '').trim(),
+      subcategoria:   String(r.subcategoria      || '').trim(),
+      codComponente:  String(r.cod_componente    || '').trim(),
+      descComponente: String(r.desc_componente   || '').trim(),
+      qtd:            n(r.qtd),
+      und:            String(r.und               || '').trim(),
+      custoUnit:      n(r.custo_unit),
+      custoIngr:      n(r.custo_ingr),
+      custoTotalPa:   n(r.custo_total_pa),
+      participacaoPct: n(r.participacao_pct),
+    }));
+
   const vendas = (resVendas.vendas ?? [])
     .map(parseVenda)
     .filter(r => r.productSku && r.count > 0);
 
-  console.log(`[CMV] fichas=${fichas.length} histórico=${historico.length} desperdício=${desperdicio.length} histProd=${histProd.length} vendas=${vendas.length}`);
-  return { fichas, historico, desperdicio, histProd, vendas };
+  console.log(`[CMV] fichas=${fichas.length} histórico=${historico.length} desperdício=${desperdicio.length} histProd=${histProd.length} histComp=${histComp.length} vendas=${vendas.length}`);
+  return { fichas, historico, desperdicio, histProd, histComp, vendas };
 }
