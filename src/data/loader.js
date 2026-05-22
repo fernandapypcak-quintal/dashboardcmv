@@ -85,10 +85,11 @@ async function fetchTipo(tipo) {
 
 // ── Entry point ────────────────────────────────────────────
 export async function loadCMVData() {
-  const [resFichas, resDesperdicio, resHistorico, resVendas] = await Promise.all([
+  const [resFichas, resDesperdicio, resHistorico, resHistProd, resVendas] = await Promise.all([
     fetchTipo('fichas'),
     fetchTipo('desperdicio'),
     fetchTipo('historico'),
+    fetchTipo('hist_prod'),
     fetchTipo('vendas'),
   ]);
 

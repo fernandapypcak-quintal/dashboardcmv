@@ -14,6 +14,7 @@ export function CMVProvider({ children }) {
   const [historico,   setHistorico]   = useState([]);
   const [desperdicio, setDesperdicio] = useState([]);
   const [vendas,     setVendas]     = useState([]);
+  const [histProd,   setHistProd]   = useState([]);
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState(null);
 
@@ -26,11 +27,12 @@ export function CMVProvider({ children }) {
 
   useEffect(() => {
     loadCMVData()
-      .then(({ fichas, historico, desperdicio, vendas }) => {
+      .then(({ fichas, historico, histProd, desperdicio, vendas }) => {
         setFichas(fichas);
         setHistorico(historico);
         setDesperdicio(desperdicio);
         setVendas(vendas || []);
+        setHistProd(histProd || []);
         setLoading(false);
       })
       .catch(e => { setError(e.message); setLoading(false); });
@@ -205,27 +207,30 @@ export function CMVProvider({ children }) {
     });
   }, [historico]);
 
-  // ── Variação semanal (última vs penúltima semana) ──────
+  // ── Variação semanal por produto (usando histProd) ───────
   const variacaoSemanal = useMemo(() => {
-    const semanas  = [...new Set(historico.map(r => r.semanaISO))].sort();
+    if (histProd.length === 0) return [];
+    const semanas  = [...new Set(histProd.map(r => r.semanaISO))].sort();
     const semAtual = semanas.at(-1) ?? '';
     const semAnt   = semanas.at(-2) ?? '';
-    const dadosAt  = historico.filter(r => r.semanaISO === semAtual);
-    const dadosAnt = historico.filter(r => r.semanaISO === semAnt);
+    const dadosAt  = histProd.filter(r => r.semanaISO === semAtual);
+    const dadosAnt = histProd.filter(r => r.semanaISO === semAnt);
 
-    return dadosAt.map(r => {
-      const ant = dadosAnt.find(a => a.categoria === r.categoria && a.subcategoria === r.subcategoria);
-      return {
-        nomePa:       r.subcategoria || r.categoria,
-        categoria:    r.categoria,
-        subcategoria: r.subcategoria,
-        cmvAtual:     r.cmvMedio,
-        cmvAnterior:  ant ? ant.cmvMedio : r.cmvMedio,
-        deltaPp:      ant ? r.cmvMedio - ant.cmvMedio : 0,
-        status:       r.status,
-      };
-    }).sort((a, b) => b.cmvAtual - a.cmvAtual);
-  }, [historico]);
+    return dadosAt
+      .filter(r => (filtroCat === 'Todas' || r.categoria === filtroCat))
+      .map(r => {
+        const ant = dadosAnt.find(a => a.codPa === r.codPa);
+        return {
+          nomePa:       r.nomePa,
+          categoria:    r.categoria,
+          subcategoria: r.subcategoria,
+          cmvAtual:     r.cmvPct,
+          cmvAnterior:  ant ? ant.cmvPct : r.cmvPct,
+          deltaPp:      ant ? r.cmvPct - ant.cmvPct : 0,
+          status:       r.status,
+        };
+      }).sort((a, b) => b.cmvAtual - a.cmvAtual);
+  }, [histProd, filtroCat]);
 
   // ── Desperdício pivot por unidade ──────────────────────
   const desperdicioByUnidade = useMemo(() => {
@@ -280,7 +285,7 @@ export function CMVProvider({ children }) {
       historico: historicoFiltrado,
       desperdicio: desperdicioFiltrado,
       // Derivados
-      kpis, evolucaoCMV, variacaoSemanal, volumePorProduto, vendasFiltradas,
+      kpis, evolucaoCMV, variacaoSemanal, volumePorProduto, vendasFiltradas, histProd,
       desperdicioByUnidade, desperdicioByClassificacao,
       margemPorCategoria,
       // Filtros
