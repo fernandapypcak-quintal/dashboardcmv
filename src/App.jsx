@@ -40,7 +40,7 @@ function Inner() {
               </div>
             </div>
           ) : (
-            <Page />
+            <Page onPageChange={setPage} />
           )}
         </main>
       </div>

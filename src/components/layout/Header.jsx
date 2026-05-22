@@ -18,21 +18,34 @@ export default function Header({ activePage }) {
         {TITLES[activePage] ?? 'Dashboard'}
       </h1>
       <div className="flex items-center gap-2 flex-wrap justify-end">
-        <Sel value={filtroLoja}    onChange={setFiltroLoja}    opts={opcoesLojas} />
-        <Sel value={filtroCanal}   onChange={setFiltroCanal}   opts={['Todos','CASA','DELIVERY']} />
-        <Sel value={filtroPeriodo} onChange={setFiltroPeriodo} opts={['Todos','Almoço','Jantar/Noite']} />
-        <Sel value={filtroCat}     onChange={setFiltroCat}     opts={opcoesCats} />
-        <Sel value={filtroMes}     onChange={setFiltroMes}     opts={opcoesMeses} />
+        <Sel label="Loja"      value={filtroLoja}    onChange={setFiltroLoja}    opts={opcoesLojas} />
+        <Sel label="Canal"     value={filtroCanal}   onChange={setFiltroCanal}   opts={['Todos','CASA','DELIVERY']} />
+        <Sel label="Período"   value={filtroPeriodo} onChange={setFiltroPeriodo} opts={['Todos','Almoço','Jantar/Noite']} />
+        <Sel label="Categoria" value={filtroCat}     onChange={setFiltroCat}     opts={opcoesCats} />
+        <Sel label="Mês"       value={filtroMes}     onChange={setFiltroMes}     opts={opcoesMeses} />
       </div>
     </header>
   );
 }
 
-function Sel({ value, onChange, opts }) {
+function Sel({ label, value, onChange, opts }) {
+  const isActive = value !== opts[0]; // diferente do padrão = filtro ativo
   return (
-    <select value={value} onChange={e=>onChange(e.target.value)}
-      className="text-[12.5px] border border-surface-border rounded-lg px-2.5 h-8 bg-white text-brand-black focus:outline-none focus:border-zinc-400 cursor-pointer">
-      {opts.map(o => <option key={o} value={o}>{o}</option>)}
-    </select>
+    <div className="flex items-center gap-1.5">
+      <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wide whitespace-nowrap">
+        {label}
+      </span>
+      <select
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        className={`text-[12.5px] border rounded-lg px-2.5 h-8 focus:outline-none cursor-pointer transition-colors
+          ${isActive
+            ? 'border-brand-black bg-brand-black text-white font-semibold'
+            : 'border-surface-border bg-white text-brand-black hover:border-zinc-400'
+          }`}
+      >
+        {opts.map(o => <option key={o} value={o}>{o}</option>)}
+      </select>
+    </div>
   );
 }
