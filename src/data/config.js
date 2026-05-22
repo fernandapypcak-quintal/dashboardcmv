@@ -1,5 +1,5 @@
 // URL do Apps Script — substitua após publicar
-export const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwyisrFoxxf9vYV0Kj2Hm_Iwu5a5KxUczTOWVYENU4PU6_vmVnzvzUgKOE73OABYp26Xg/exec';
+export const APPS_SCRIPT_URL = 'COLE_A_URL_DO_APPS_SCRIPT_AQUI';
 
 // Mapa de lojas ZIG → loja normalizada + canal
 export const MAPA_LOJAS = {
@@ -25,7 +25,49 @@ export const MAPA_LOJAS = {
   'Delivery Santana':                   { loja: 'SANTANA',       canal: 'DELIVERY' },
 };
 
-export const LOJAS = [...new Set(Object.values(MAPA_LOJAS).map(v => v.loja))].sort();
+// Lojas ativas (as 10 unidades da rede) — usado para filtrar e normalizar
+export const LOJAS_ATIVAS = [
+  'CARINAS', 'CHACARA', 'LAPA', 'PAVAO', 'PERDIZES',
+  'SANTANA', 'SANTO ANDRE', 'TATUAPE', 'VILA MADALENA', 'VILA MARIANA',
+];
+
+// Normaliza nomes de unidade vindos do desperdício
+// (acentos, espaços, grafias diferentes → nome canônico)
+export const NORMALIZA_UNIDADE = {
+  // Carinás
+  'CARINAS ':    'CARINAS',
+  'CARINÁS':     'CARINAS',
+  'CARINÁS ':    'CARINAS',
+  'CARINAS':     'CARINAS',
+  // Chácara
+  'CHACARA':     'CHACARA',
+  'CHÁCARA':     'CHACARA',
+  'CHAC':        'CHACARA',
+  // Lapa
+  'LAPA':        'LAPA',
+  // Pavão
+  'PAVAO':       'PAVAO',
+  'PAVÃO':       'PAVAO',
+  // Perdizes
+  'PERDIZES':    'PERDIZES',
+  // Santana
+  'SANTANA':     'SANTANA',
+  // Santo André
+  'SANTO ANDRÉ': 'SANTO ANDRE',
+  'SANTO ANDRE': 'SANTO ANDRE',
+  // Tatuapé
+  'TATUAPÉ':     'TATUAPE',
+  'TATUAPE':     'TATUAPE',
+  // Vila Madalena
+  'VILA MADALENA': 'VILA MADALENA',
+  // Vila Mariana
+  'VILA MARIANA':  'VILA MARIANA',
+};
+
+export function normalizaUnidade(raw) {
+  const upper = String(raw || '').toUpperCase().trim();
+  return NORMALIZA_UNIDADE[upper] ?? upper;
+}
 
 // Almoço: seg–sex, 11h–15h
 export const ALMOCO_INICIO = 11;

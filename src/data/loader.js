@@ -1,4 +1,4 @@
-import { APPS_SCRIPT_URL, MAPA_LOJAS } from './config';
+import { APPS_SCRIPT_URL, MAPA_LOJAS, normalizaUnidade, LOJAS_ATIVAS } from './config';
 
 const n = v => parseFloat(String(v).replace(',', '.')) || 0;
 const s = v => String(v ?? '').trim();
@@ -34,8 +34,7 @@ function parseFicha(r) {
 
 // ── Parser: desperdício ────────────────────────────────────
 function parseDesperdicio(r) {
-  const unidade = s(r.unidade).toUpperCase().trim()
-    .replace('CARINAS ', 'CARINAS').replace('AVARIAS ', 'AVARIAS');
+  const unidade = normalizaUnidade(s(r.unidade));
   return {
     data:          s(r.data),
     mes:           s(r.mes).toLowerCase(),
@@ -86,10 +85,10 @@ async function fetchTipo(tipo) {
 
 // ── Entry point ────────────────────────────────────────────
 export async function loadCMVData() {
-  const [resFichas, resHistorico, resDesperdicio] = await Promise.all([
+  const [resFichas, resDesperdicio, resHistorico] = await Promise.all([
     fetchTipo('fichas'),
-    fetchTipo('historico'),
     fetchTipo('desperdicio'),
+    fetchTipo('historico'),
   ]);
 
   const fichas = (resFichas.fichas ?? [])
@@ -97,12 +96,22 @@ export async function loadCMVData() {
     .filter(r => r.codPa && r.nomePa);
 
   const historico = (resHistorico.historico ?? [])
-    .map(parseHistorico)
-    .filter(r => r.semanaISO && r.nomePa);
+    .filter(r => r.semana_iso && r.categoria)
+    .map(r => ({
+      semanaISO:    String(r.semana_iso   || '').trim(),
+      dataRef:      String(r.data_ref     || '').trim(),
+      categoria:    String(r.categoria    || '').trim(),
+      subcategoria: String(r.subcategoria || '').trim(),
+      qtdProdutos:  n(r.qtd_produtos),
+      cmvMedio:     n(r.cmv_medio),
+      margemMedia:  n(r.margem_media),
+      qtdCriticos:  n(r.qtd_criticos),
+      status:       String(r.status || 'OK').trim(),
+    }));
 
   const desperdicio = (resDesperdicio.desperdicio ?? [])
     .map(parseDesperdicio)
-    .filter(r => r.unidade && r.custoTotal > 0);
+    .filter(r => r.unidade && LOJAS_ATIVAS.includes(r.unidade) && r.custoTotal > 0);
 
   console.log(`[CMV] fichas=${fichas.length} histórico=${historico.length} desperdício=${desperdicio.length}`);
   return { fichas, historico, desperdicio };

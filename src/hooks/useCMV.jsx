@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { loadCMVData } from '../data/loader';
-import { META_CMV, LOJAS } from '../data/config';
+import { META_CMV, LOJAS_ATIVAS } from '../data/config';
 
 const Ctx = createContext(null);
 
@@ -34,13 +34,10 @@ export function CMVProvider({ children }) {
       .catch(e => { setError(e.message); setLoading(false); });
   }, []);
 
-  // ── Opções de filtro ───────────────────────────────────
+  // Filtro de loja: sempre as 10 lojas ativas, ordem fixa
   const opcoesLojas = useMemo(() =>
-    ['Todas', ...new Set([
-      ...historico.map(r=>r.loja),
-      ...desperdicio.map(r=>r.unidade),
-    ].filter(Boolean))].sort(),
-  [historico, desperdicio]);
+    ['Todas', ...LOJAS_ATIVAS],
+  []);
 
   const opcoesCats = useMemo(() =>
     ['Todas', ...new Set(fichas.map(r=>r.categoria).filter(Boolean))].sort(),
@@ -145,48 +142,42 @@ export function CMVProvider({ children }) {
   }, [produtosFiltrados, historicoFiltrado, desperdicioFiltrado]);
 
   // ── Evolução semanal CMV ───────────────────────────────
+  // ── Evolução semanal CMV (do historico_cmv) ───────────────
   const evolucaoCMV = useMemo(() => {
-    const semanas = [...new Set(historicoFiltrado.map(r=>r.semanaISO))].sort();
+    const semanas = [...new Set(historico.map(r => r.semanaISO))].sort();
     return semanas.map(sem => {
-      const rows = historicoFiltrado.filter(r=>r.semanaISO===sem);
-      const cmv  = avg(rows.map(r=>r.cmvPct));
-      // Por categoria
+      const rows = historico.filter(r => r.semanaISO === sem);
+      const cmv  = avg(rows.map(r => r.cmvMedio));
       const porCat = {};
-      [...new Set(rows.map(r=>r.categoria))].forEach(cat => {
-        const catRows = rows.filter(r=>r.categoria===cat);
-        porCat[cat] = parseFloat((avg(catRows.map(r=>r.cmvPct))*100).toFixed(1));
+      [...new Set(rows.map(r => r.categoria))].forEach(cat => {
+        const cr = rows.filter(r => r.categoria === cat);
+        porCat[cat] = parseFloat((avg(cr.map(r => r.cmvMedio)) * 100).toFixed(1));
       });
-      return { semana: sem.replace('2026-',''), cmv: parseFloat((cmv*100).toFixed(1)), ...porCat };
+      return { semana: sem.replace('2026-', ''), cmv: parseFloat((cmv * 100).toFixed(1)), ...porCat };
     });
-  }, [historicoFiltrado]);
+  }, [historico]);
 
-  // ── Variação semanal por produto ───────────────────────
+  // ── Variação semanal (última vs penúltima semana) ──────
   const variacaoSemanal = useMemo(() => {
-    const semanas = [...new Set(historicoFiltrado.map(r=>r.semanaISO))].sort();
+    const semanas  = [...new Set(historico.map(r => r.semanaISO))].sort();
     const semAtual = semanas.at(-1) ?? '';
-    const dadosAt  = historicoFiltrado.filter(r=>r.semanaISO===semAtual);
+    const semAnt   = semanas.at(-2) ?? '';
+    const dadosAt  = historico.filter(r => r.semanaISO === semAtual);
+    const dadosAnt = historico.filter(r => r.semanaISO === semAnt);
 
-    const porProduto = new Map();
-    dadosAt.forEach(r => {
-      if (!porProduto.has(r.codPa)) porProduto.set(r.codPa, []);
-      porProduto.get(r.codPa).push(r);
-    });
-
-    return [...porProduto.values()].map(rows => {
-      const cmvAt  = avg(rows.map(r=>r.cmvPct));
-      const cmvAnt = avg(rows.map(r=>r.cmvPctAnt));
-      const delta  = cmvAt - cmvAnt;
+    return dadosAt.map(r => {
+      const ant = dadosAnt.find(a => a.categoria === r.categoria && a.subcategoria === r.subcategoria);
       return {
-        nomePa:      rows[0].nomePa,
-        categoria:   rows[0].categoria,
-        subcategoria:rows[0].subcategoria,
-        cmvAtual:    cmvAt,
-        cmvAnterior: cmvAnt,
-        deltaPp:     delta,
-        status:      rows[0].status,
+        nomePa:       r.subcategoria || r.categoria,
+        categoria:    r.categoria,
+        subcategoria: r.subcategoria,
+        cmvAtual:     r.cmvMedio,
+        cmvAnterior:  ant ? ant.cmvMedio : r.cmvMedio,
+        deltaPp:      ant ? r.cmvMedio - ant.cmvMedio : 0,
+        status:       r.status,
       };
-    }).sort((a,b) => b.cmvAtual - a.cmvAtual);
-  }, [historicoFiltrado]);
+    }).sort((a, b) => b.cmvAtual - a.cmvAtual);
+  }, [historico]);
 
   // ── Desperdício pivot por unidade ──────────────────────
   const desperdicioByUnidade = useMemo(() => {
