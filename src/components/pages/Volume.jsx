@@ -79,11 +79,11 @@ export default function Volume() {
             </div>
             <div className="p-5">
               <ResponsiveContainer width="100%" height={240}>
-                <BarChart data={topReceita.map(r => ({ nome: r.nomePa.split(' ').slice(0,2).join(' '), receita: parseFloat(r.receitaReal.toFixed(0)), custo: parseFloat(r.custoTotal.toFixed(0)) }))}
+                <BarChart data={topReceita.map(r => ({ nome: r.nomePa.length > 18 ? r.nomePa.slice(0,18)+'…' : r.nomePa, receita: parseFloat(r.receitaReal.toFixed(0)), custo: parseFloat(r.custoTotal.toFixed(0)) }))}
                   layout="vertical" margin={{top:4,right:16,left:0,bottom:0}}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" horizontal={false}/>
                   <XAxis type="number" tick={{fontSize:10,fill:'#999'}} tickFormatter={v=>brlK(v)} axisLine={false} tickLine={false}/>
-                  <YAxis type="category" dataKey="nome" tick={{fontSize:10,fill:'#555'}} width={90} axisLine={false} tickLine={false}/>
+                  <YAxis type="category" dataKey="nome" tick={{fontSize:10,fill:'#555'}} width={130} axisLine={false} tickLine={false}/>
                   <Tooltip formatter={(v,n) => [brlK(v), n === 'receita' ? 'Receita' : 'Custo']}
                     contentStyle={{background:'#fff',border:'1px solid #e8e8e2',borderRadius:8,fontSize:12}}/>
                   <Bar dataKey="receita" fill="#97A624" radius={[0,4,4,0]} barSize={12}/>

@@ -129,10 +129,15 @@ export function CMVProvider({ children }) {
     const vendaMap = {};
     vendasFiltradas.forEach(v => {
       const sku = v.productSku;
-      if (!vendaMap[sku]) vendaMap[sku] = { qtd: 0, receita: 0, nome: v.productName, categoria: v.productCategory, loja: v.loja, canal: v.canal };
-      vendaMap[sku].qtd     += v.count || 0;
-      vendaMap[sku].receita += (v.unitValue - v.discountValue) * (v.count || 0);
+      if (!sku) return;
+      if (!vendaMap[sku]) vendaMap[sku] = { qtd: 0, receita: 0, nome: v.productName, categoria: v.productCategory };
+      const qtd = v.count || 0;
+      const valorUnit = v.unitValue || 0;
+      const desconto  = v.discountValue || 0;
+      vendaMap[sku].qtd     += qtd;
+      vendaMap[sku].receita += Math.max(0, valorUnit - desconto) * qtd;
     });
+    console.log('[Volume] SKUs com venda:', Object.keys(vendaMap).length, '| Total itens:', Object.values(vendaMap).reduce((s,v)=>s+v.qtd,0));
 
     // Cruza com ficha técnica pelo SKU ZIG
     return produtosUnicos.map(p => {
