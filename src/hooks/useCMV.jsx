@@ -162,36 +162,31 @@ export function CMVProvider({ children }) {
 
   // ── KPIs home ─────────────────────────────────────────
   const kpis = useMemo(() => {
-    const semanas = [...new Set(historicoFiltrado.map(r=>r.semanaISO))].sort();
+    // CMV atual vem direto das fichas técnicas (fonte mais confiável)
+    const cmvAtual = avg(produtosFiltrados.map(r => r.cmvPct));
+
+    // Delta vem do histórico se disponível
+    const semanas  = [...new Set(historico.map(r => r.semanaISO))].sort();
     const semAtual = semanas.at(-1) ?? '';
     const semAnt   = semanas.at(-2) ?? '';
-    const dadosAt  = historicoFiltrado.filter(r=>r.semanaISO===semAtual);
-    const dadosAnt = historicoFiltrado.filter(r=>r.semanaISO===semAnt);
-
-    const cmvAtual = avg(dadosAt.map(r=>r.cmvPct));
-    const cmvAnt   = avg(dadosAnt.map(r=>r.cmvPct));
+    const dadosAnt = historico.filter(r => r.semanaISO === semAnt);
+    const cmvAnt   = dadosAnt.length > 0
+      ? avg(dadosAnt.map(r => r.cmvMedio))
+      : cmvAtual;
     const deltaCMV = cmvAtual - cmvAnt;
 
-    const criticos = produtosFiltrados.filter(r=>r.cmvPct>1).length;
-    const atencao  = produtosFiltrados.filter(r=>r.cmvPct>=META_CMV&&r.cmvPct<1).length;
-    const okCount  = produtosFiltrados.filter(r=>r.cmvPct<META_CMV).length;
-
-    const totalDesp = desperdicioFiltrado.reduce((s,r)=>s+r.custoTotal,0);
-    const unidades  = new Set([
-      ...dadosAt.map(r=>r.loja),
-      ...desperdicioFiltrado.map(r=>r.unidade),
-    ]).size;
-
-    // Margem média
-    const margem = avg(produtosFiltrados.map(r=>r.margemContribPct));
+    const criticos = produtosFiltrados.filter(r => r.cmvPct > 1).length;
+    const atencao  = produtosFiltrados.filter(r => r.cmvPct >= META_CMV && r.cmvPct < 1).length;
+    const okCount  = produtosFiltrados.filter(r => r.cmvPct < META_CMV).length;
+    const margem   = avg(produtosFiltrados.map(r => r.margemContribPct));
+    const totalDesp = desperdicioFiltrado.reduce((s, r) => s + r.custoTotal, 0);
 
     return {
       cmvAtual, cmvAnt, deltaCMV,
       criticos, atencao, okCount,
-      totalDesp, unidades, margem,
-      semAtual,
+      totalDesp, margem, semAtual,
     };
-  }, [produtosFiltrados, historicoFiltrado, desperdicioFiltrado]);
+  }, [produtosFiltrados, historico, desperdicioFiltrado]);
 
   // ── Evolução semanal CMV ───────────────────────────────
   // ── Evolução semanal CMV (do historico_cmv) ───────────────
