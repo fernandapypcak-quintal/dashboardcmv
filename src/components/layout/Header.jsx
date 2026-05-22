@@ -8,7 +8,7 @@ const TITLES = {
 
 export default function Header({ activePage }) {
   const { opcoesLojas, opcoesCats, opcoesMeses,
-          filtroLoja, setFiltroLoja, filtroCanal, setFiltroCanal,
+          filtroLoja, setFiltroLoja,
           filtroCat, setFiltroCat, filtroMes, setFiltroMes,
           filtroPeriodo, setFiltroPeriodo } = useCMV();
 
@@ -19,7 +19,6 @@ export default function Header({ activePage }) {
       </h1>
       <div className="flex items-center gap-2 flex-wrap justify-end">
         <Sel label="Loja"      value={filtroLoja}    onChange={setFiltroLoja}    opts={opcoesLojas} />
-        <Sel label="Canal"     value={filtroCanal}   onChange={setFiltroCanal}   opts={['Todos','CASA','DELIVERY']} />
         <Sel label="Período"   value={filtroPeriodo} onChange={setFiltroPeriodo} opts={['Todos','Almoço','Jantar/Noite']} />
         <Sel label="Categoria" value={filtroCat}     onChange={setFiltroCat}     opts={opcoesCats} />
         <Sel label="Mês"       value={filtroMes}     onChange={setFiltroMes}     opts={opcoesMeses} />

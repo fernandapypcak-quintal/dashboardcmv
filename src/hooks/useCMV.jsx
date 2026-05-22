@@ -20,7 +20,7 @@ export function CMVProvider({ children }) {
 
   // ── Filtros ────────────────────────────────────────────
   const [filtroLoja,    setFiltroLoja]    = useState('Todas');
-  const [filtroCanal,   setFiltroCanal]   = useState('Todos');
+  const [filtroCanal,   setFiltroCanal]   = useState('CASA');
   const [filtroCat,     setFiltroCat]     = useState('Todas');
   const [filtroMes,     setFiltroMes]     = useState('Todos');
   const [filtroPeriodo, setFiltroPeriodo] = useState('Todos'); // Todos | Almoço | Jantar/Noite
