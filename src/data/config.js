@@ -1,5 +1,5 @@
 // URL do Apps Script — substitua após publicar
-export const APPS_SCRIPT_URL = 'COLE_A_URL_DO_APPS_SCRIPT_AQUI';
+export const APPS_SCRIPT_URL = 'COLE_A_URL_DO_APPS_SCRIPT_AQUI'';
 
 // Mapa de lojas ZIG → loja normalizada + canal
 export const MAPA_LOJAS = {
