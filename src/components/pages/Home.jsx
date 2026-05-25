@@ -11,7 +11,7 @@ const CORES = ['#97A624','#D9B504','#8C1414','#2980b9','#e67e22','#9b59b6'];
 export default function Home({ onPageChange }) {
   const {
     kpis, evolucaoCMV, desperdicioByUnidade,
-    produtos, margemPorCategoria,
+    produtos, margemPorCategoria, histComp,
     setFiltroCat, setFiltroLoja,
   } = useCMV();
 
@@ -296,7 +296,7 @@ export default function Home({ onPageChange }) {
 
       {/* Painel ingredientes */}
       {painelProduto && (
-        <PainelIngredientes produto={painelProduto} onClose={() => setPainelProduto(null)}/>
+        <PainelIngredientes produto={painelProduto} histComp={histComp} onClose={() => setPainelProduto(null)}/>
       )}
 
     </div>
