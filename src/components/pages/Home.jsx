@@ -1,76 +1,207 @@
 import { useCMV } from '../../hooks/useCMV';
-import KpiCard from '../ui/KpiCard';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer } from 'recharts';
 
 const brlK = v => v >= 1000 ? `R$ ${(v/1000).toFixed(1)}k` : `R$ ${v.toFixed(0)}`;
-const pct  = v => `${(v*100).toFixed(1)}%`;
+const brl  = v => `R$ ${(v||0).toFixed(2)}`;
+const pct  = v => `${((v||0)*100).toFixed(1)}%`;
 const CORES = ['#97A624','#D9B504','#8C1414','#2980b9','#e67e22','#9b59b6'];
-const CORES_DESP = ['#97A624','#009e74','#8C1414','#D9B504','#e67e22','#c0392b','#2980b9','#777','#555','#009e74'];
 
 export default function Home({ onPageChange }) {
-  const { kpis, evolucaoCMV, desperdicioByUnidade, produtos, margemPorCategoria,
-          setFiltroCat, setFiltroLoja } = useCMV();
+  const {
+    kpis, evolucaoCMV, desperdicioByUnidade,
+    produtos, margemPorCategoria,
+    setFiltroCat, setFiltroLoja,
+  } = useCMV();
 
-  const criticos   = produtos.filter(r => r.cmvPct > 1).slice(0, 5);
-  const grandTotal = desperdicioByUnidade.reduce((s, r) => s + r.total, 0);
-  const maxDesp    = Math.max(...desperdicioByUnidade.map(r => r.total), 1);
-  const mesesVis   = desperdicioByUnidade[0] ? Object.keys(desperdicioByUnidade[0].porMes) : [];
-  const cats       = margemPorCategoria.slice(0, 4).map(r => r.categoria);
+  // ── Itens para o briefing executivo ──────────────────────
+  const briefing = [];
 
-  function irParaCategoria(cat) {
-    setFiltroCat(cat);
-    onPageChange('rentabilidade');
+  // 1. Produtos com CMV > 100% — calcula impacto em R$ se tiver vendas
+  const criticos = produtos.filter(r => r.cmvPct > 1);
+  criticos.forEach(p => {
+    const impacto = p.precoVenda > 0 ? p.custoIngr - p.precoVenda : 0;
+    briefing.push({
+      tipo:    'critico',
+      titulo:  p.nomePa,
+      detalhe: `CMV ${pct(p.cmvPct)} — prejuízo de ${brl(impacto)} por unidade vendida`,
+      acao:    `Ajustar preço para ${brl(p.precoSugerido)}`,
+      onClick: () => { setFiltroCat(p.categoria); onPageChange('rentabilidade'); },
+    });
+  });
+
+  // 2. Loja com maior desperdício vs média
+  if (desperdicioByUnidade.length > 1) {
+    const media = desperdicioByUnidade.reduce((s,r) => s + r.total, 0) / desperdicioByUnidade.length;
+    const pior  = desperdicioByUnidade[0];
+    const acima = pior.total - media;
+    if (acima > 500) {
+      briefing.push({
+        tipo:    'atencao',
+        titulo:  `${pior.unidade} — desperdício acima da média`,
+        detalhe: `${brlK(pior.total)} acumulado — ${brlK(acima)} acima da média das lojas`,
+        acao:    `Ver detalhes de desperdício`,
+        onClick: () => { setFiltroLoja(pior.unidade); onPageChange('desperdicio'); },
+      });
+    }
   }
 
-  function irParaLoja(loja) {
-    setFiltroLoja(loja);
-    onPageChange('desperdicio');
+  // 3. CMV subindo — alerta de tendência
+  if (kpis.deltaCMV > 0.02) {
+    briefing.push({
+      tipo:    'atencao',
+      titulo:  `CMV subiu ${pct(kpis.deltaCMV)} vs semana anterior`,
+      detalhe: `De ${pct(kpis.cmvAnt)} para ${pct(kpis.cmvAtual)} — tendência de alta`,
+      acao:    `Ver variação por produto`,
+      onClick: () => onPageChange('variacao'),
+    });
   }
+
+  // 4. Categorias com margem abaixo da meta
+  const catsBaixaMargem = margemPorCategoria.filter(r => r.margemMedia < 0.60 && r.qtdProdutos > 3);
+  catsBaixaMargem.slice(0, 1).forEach(cat => {
+    briefing.push({
+      tipo:    'atencao',
+      titulo:  `${cat.categoria} com margem baixa`,
+      detalhe: `Margem média ${pct(cat.margemMedia)} — meta é 65%. ${cat.criticos > 0 ? `${cat.criticos} produto(s) crítico(s).` : ''}`,
+      acao:    `Revisar precificação`,
+      onClick: () => { setFiltroCat(cat.categoria); onPageChange('rentabilidade'); },
+    });
+  });
+
+  const cats = margemPorCategoria.slice(0, 5).map(r => r.categoria);
+  const grandTotalDesp = desperdicioByUnidade.reduce((s,r) => s + r.total, 0);
 
   return (
     <div className="p-5 space-y-4">
 
-      {/* KPIs clicáveis */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <KpiCard icon="📊" label="CMV Médio Teórico"
-          value={pct(kpis.cmvAtual)}
-          sub={kpis.deltaCMV > 0
-            ? `↑ ${pct(Math.abs(kpis.deltaCMV))} vs semana ant.`
-            : `↓ ${pct(Math.abs(kpis.deltaCMV))} vs semana ant.`}
-          ok={kpis.cmvAtual <= 0.30}
-          onClick={() => onPageChange('variacao')} />
-        <KpiCard icon="💰" label="Margem de Contribuição"
-          value={pct(kpis.margem)}
-          sub={kpis.margem >= 0.65 ? 'Acima da meta 65%' : 'Abaixo da meta 65%'}
-          ok={kpis.margem >= 0.65}
-          onClick={() => onPageChange('rentabilidade')} />
-        <KpiCard icon="🗑" label="Desperdício no Período"
-          value={brlK(kpis.totalDesp)}
-          sub="clique para ver por loja"
-          onClick={() => onPageChange('desperdicio')} />
-        <KpiCard icon="⚠" label="Produtos Críticos"
-          value={String(kpis.criticos)}
-          sub={`${kpis.atencao} em atenção · ${kpis.okCount} OK`}
-          ok={kpis.criticos === 0}
-          onClick={() => onPageChange('rentabilidade')} />
+      {/* ── BRIEFING EXECUTIVO ─────────────────────────────── */}
+      <div className="bg-white border border-surface-border rounded-xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-surface-border flex items-center justify-between">
+          <div>
+            <p className="font-bold text-brand-black text-[15px]">Briefing da semana</p>
+            <p className="text-xs text-zinc-400 mt-0.5">itens que exigem atenção ou decisão agora</p>
+          </div>
+          {briefing.length === 0 && (
+            <span className="text-[12px] font-semibold text-brand-olive bg-green-50 border border-green-100 px-3 py-1 rounded-full">
+              ✓ Tudo dentro do esperado
+            </span>
+          )}
+        </div>
+
+        {briefing.length === 0 ? (
+          <div className="px-5 py-8 text-center text-zinc-400 text-sm">
+            Nenhum alerta esta semana. CMV dentro da meta, desperdício equilibrado.
+          </div>
+        ) : (
+          <div className="divide-y divide-surface-border">
+            {briefing.map((item, i) => (
+              <div key={i}
+                onClick={item.onClick}
+                className="flex items-start gap-4 px-5 py-4 hover:bg-surface-muted cursor-pointer transition-colors group">
+                {/* Ícone de severidade */}
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5
+                  ${item.tipo === 'critico' ? 'bg-red-50' : 'bg-amber-50'}`}>
+                  <span className="text-base">{item.tipo === 'critico' ? '🔴' : '🟡'}</span>
+                </div>
+
+                {/* Conteúdo */}
+                <div className="flex-1 min-w-0">
+                  <p className={`text-[14px] font-semibold leading-tight
+                    ${item.tipo === 'critico' ? 'text-brand-crimson' : 'text-brand-black'}`}>
+                    {item.titulo}
+                  </p>
+                  <p className="text-[12px] text-zinc-500 mt-0.5">{item.detalhe}</p>
+                </div>
+
+                {/* Ação */}
+                <div className="shrink-0 text-right">
+                  <span className="text-[12px] font-medium text-brand-olive group-hover:underline">
+                    {item.acao} →
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
+      {/* ── KPIs ───────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {/* CMV */}
+        <div onClick={() => onPageChange('variacao')}
+          className="bg-white border border-surface-border rounded-xl p-4 cursor-pointer hover:border-zinc-400 transition-colors group">
+          <p className="text-[10.5px] font-semibold text-zinc-400 uppercase tracking-wide mb-2">CMV Médio Teórico</p>
+          <p className={`text-[28px] font-bold leading-none tracking-tight
+            ${kpis.cmvAtual > 0.30 ? 'text-amber-700' : 'text-brand-olive'}`}>
+            {pct(kpis.cmvAtual)}
+          </p>
+          <div className="flex items-center justify-between mt-1.5">
+            <p className={`text-[12px] font-medium
+              ${kpis.deltaCMV > 0 ? 'text-brand-crimson' : 'text-brand-olive'}`}>
+              {kpis.deltaCMV > 0 ? '↑' : '↓'} {pct(Math.abs(kpis.deltaCMV))} vs sem. ant.
+            </p>
+            <span className="text-zinc-300 text-xs group-hover:text-zinc-400">→</span>
+          </div>
+        </div>
+
+        {/* Margem */}
+        <div onClick={() => onPageChange('rentabilidade')}
+          className="bg-white border border-surface-border rounded-xl p-4 cursor-pointer hover:border-zinc-400 transition-colors group">
+          <p className="text-[10.5px] font-semibold text-zinc-400 uppercase tracking-wide mb-2">Margem Média</p>
+          <p className={`text-[28px] font-bold leading-none tracking-tight
+            ${kpis.margem >= 0.65 ? 'text-brand-olive' : 'text-amber-700'}`}>
+            {pct(kpis.margem)}
+          </p>
+          <p className={`text-[12px] font-medium mt-1.5
+            ${kpis.margem >= 0.65 ? 'text-brand-olive' : 'text-amber-700'}`}>
+            {kpis.margem >= 0.65 ? '✓ acima da meta 65%' : '↓ abaixo da meta 65%'}
+          </p>
+        </div>
+
+        {/* Desperdício */}
+        <div onClick={() => onPageChange('desperdicio')}
+          className="bg-white border border-surface-border rounded-xl p-4 cursor-pointer hover:border-zinc-400 transition-colors group">
+          <p className="text-[10.5px] font-semibold text-zinc-400 uppercase tracking-wide mb-2">Desperdício Acum.</p>
+          <p className="text-[28px] font-bold leading-none tracking-tight text-brand-black">
+            {brlK(kpis.totalDesp)}
+          </p>
+          <p className="text-[12px] text-zinc-400 mt-1.5">
+            {desperdicioByUnidade.length} lojas · maior: {desperdicioByUnidade[0]?.unidade ?? '—'}
+          </p>
+        </div>
+
+        {/* Críticos */}
+        <div onClick={() => onPageChange('rentabilidade')}
+          className="bg-white border border-surface-border rounded-xl p-4 cursor-pointer hover:border-zinc-400 transition-colors group">
+          <p className="text-[10.5px] font-semibold text-zinc-400 uppercase tracking-wide mb-2">Produtos Críticos</p>
+          <p className={`text-[28px] font-bold leading-none tracking-tight
+            ${kpis.criticos > 0 ? 'text-brand-crimson' : 'text-brand-olive'}`}>
+            {kpis.criticos}
+          </p>
+          <p className="text-[12px] text-zinc-400 mt-1.5">
+            {kpis.atencao} em atenção · {kpis.okCount} OK
+          </p>
+        </div>
+      </div>
+
+      {/* ── GRÁFICO + DESPERDÍCIO ──────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
         {/* Evolução CMV */}
         <div className="lg:col-span-2 bg-white border border-surface-border rounded-xl">
           <div className="px-5 py-3.5 border-b border-surface-border flex items-center justify-between">
             <div>
-              <p className="font-semibold text-brand-black text-sm">Evolução do CMV por semana</p>
-              <p className="text-xs text-zinc-400 mt-0.5">linha tracejada = meta 30%</p>
+              <p className="font-semibold text-brand-black text-sm">Evolução do CMV</p>
+              <p className="text-xs text-zinc-400 mt-0.5">por semana · meta 30%</p>
             </div>
             <button onClick={() => onPageChange('variacao')}
               className="text-[12px] text-brand-olive font-medium hover:underline">
-              Ver detalhe →
+              Detalhar →
             </button>
           </div>
           <div className="p-5">
             {evolucaoCMV.length > 0 ? (
-              <ResponsiveContainer width="100%" height={200}>
+              <ResponsiveContainer width="100%" height={190}>
                 <LineChart data={evolucaoCMV} margin={{top:4,right:8,left:-20,bottom:0}}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" vertical={false}/>
                   <XAxis dataKey="semana" tick={{fontSize:11,fill:'#999'}} axisLine={false} tickLine={false}/>
@@ -78,160 +209,110 @@ export default function Home({ onPageChange }) {
                   <Tooltip formatter={(v,n)=>[`${Number(v).toFixed(1)}%`,n]}
                     contentStyle={{background:'#fff',border:'1px solid #e8e8e2',borderRadius:8,fontSize:12}}/>
                   <ReferenceLine y={30} stroke="#ccc" strokeDasharray="5 4" strokeWidth={1.5}/>
-                  <Line type="monotone" dataKey="cmv" name="CMV Geral" stroke="#97A624" strokeWidth={2.5} dot={{fill:'#97A624',r:3}} activeDot={{r:5}}/>
-                  {cats.map((cat, i) => (
-                    <Line key={cat} type="monotone" dataKey={cat} stroke={CORES[i+1]}
+                  <Line type="monotone" dataKey="cmv" name="Geral" stroke="#0D0D0D" strokeWidth={2.5} dot={{fill:'#0D0D0D',r:3}} activeDot={{r:5}}/>
+                  {cats.map((cat,i) => (
+                    <Line key={cat} type="monotone" dataKey={cat} stroke={CORES[i%CORES.length]}
                       strokeWidth={1.5} dot={false} activeDot={{r:4}}/>
                   ))}
                 </LineChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-[200px] flex flex-col items-center justify-center gap-2">
-                <p className="text-sm text-zinc-400">Sem histórico disponível ainda</p>
-                <p className="text-xs text-zinc-300">Cole os dados na ficha_tecnica e salve para gerar o primeiro snapshot</p>
+              <div className="h-[190px] flex flex-col items-center justify-center gap-2 text-center">
+                <p className="text-sm text-zinc-400">Histórico ainda não disponível</p>
+                <p className="text-xs text-zinc-300">Grave o primeiro snapshot pelo menu da planilha</p>
               </div>
             )}
           </div>
         </div>
 
-        {/* Alertas críticos */}
+        {/* Top 3 lojas desperdício */}
         <div className="bg-white border border-surface-border rounded-xl">
           <div className="px-5 py-3.5 border-b border-surface-border flex items-center justify-between">
             <div>
-              <p className="font-semibold text-brand-black text-sm">CMV acima de 100%</p>
-              <p className="text-xs text-zinc-400 mt-0.5">prejuízo a cada venda</p>
+              <p className="font-semibold text-brand-black text-sm">Desperdício por loja</p>
+              <p className="text-xs text-zinc-400 mt-0.5">total: {brlK(grandTotalDesp)}</p>
             </div>
-            {criticos.length > 0 && (
-              <button onClick={() => onPageChange('rentabilidade')}
-                className="text-[12px] text-brand-olive font-medium hover:underline">
-                Ver todos →
-              </button>
-            )}
+            <button onClick={() => onPageChange('desperdicio')}
+              className="text-[12px] text-brand-olive font-medium hover:underline">
+              Ver todas →
+            </button>
           </div>
-          <div className="p-4 space-y-2">
-            {criticos.length === 0
-              ? <p className="text-sm text-zinc-400 text-center py-6">Nenhum item crítico ✓</p>
-              : criticos.map(item => (
-                  <div key={item.codPa}
-                    onClick={() => irParaCategoria(item.categoria)}
-                    className="p-3 bg-red-50 border border-red-100 rounded-lg cursor-pointer hover:bg-red-100 transition-colors">
-                    <div className="flex justify-between items-start">
-                      <p className="text-[12.5px] font-medium text-brand-black leading-snug">{item.nomePa}</p>
-                      <span className="text-[13px] font-bold text-brand-crimson ml-2 shrink-0">{pct(item.cmvPct)}</span>
+          <div className="p-4 space-y-3">
+            {desperdicioByUnidade.slice(0, 5).map((row, i) => {
+              const share = grandTotalDesp > 0 ? row.total / grandTotalDesp : 0;
+              const mediaDesp = grandTotalDesp / (desperdicioByUnidade.length || 1);
+              const acima = row.total > mediaDesp;
+              return (
+                <div key={row.unidade}
+                  onClick={() => { setFiltroLoja(row.unidade); onPageChange('desperdicio'); }}
+                  className="cursor-pointer group">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[13px] font-medium text-brand-black group-hover:text-brand-olive transition-colors">
+                      {row.unidade}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      {acima && i === 0 && (
+                        <span className="text-[10px] font-semibold text-brand-crimson bg-red-50 px-1.5 py-0.5 rounded-full">
+                          maior
+                        </span>
+                      )}
+                      <span className="text-[12px] font-mono font-semibold text-brand-black">
+                        {brlK(row.total)}
+                      </span>
                     </div>
-                    <p className="text-[11px] text-zinc-400 mt-0.5">{item.subcategoria} · Sug: R$ {item.precoSugerido.toFixed(2)}</p>
                   </div>
-                ))
-            }
+                  <div className="h-1.5 bg-surface-muted rounded-full overflow-hidden">
+                    <div className="h-full rounded-full transition-all"
+                      style={{
+                        width: `${(share * 100).toFixed(0)}%`,
+                        background: i === 0 ? '#8C1414' : i === 1 ? '#D9B504' : '#97A624',
+                      }}/>
+                  </div>
+                  <p className="text-[10px] text-zinc-400 mt-0.5">{(share*100).toFixed(1)}% do total</p>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
 
-      {/* Margem por categoria — clicável */}
+      {/* ── MARGEM POR CATEGORIA — compacta ───────────────── */}
       <div className="bg-white border border-surface-border rounded-xl overflow-hidden">
         <div className="px-5 py-3.5 border-b border-surface-border flex items-center justify-between">
-          <p className="font-semibold text-brand-black text-sm">Margem de contribuição por categoria</p>
-          <p className="text-xs text-zinc-400">clique na categoria para ver os produtos</p>
+          <p className="font-semibold text-brand-black text-sm">Margem por categoria</p>
+          <p className="text-xs text-zinc-400">clique para ver os produtos</p>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-[13px]">
-            <thead>
-              <tr className="border-b border-surface-border">
-                {['Categoria','Produtos','CMV Médio','Margem Média','Críticos','Atenção'].map(h => (
-                  <th key={h} className="px-4 py-2 text-[10px] font-semibold text-zinc-400 uppercase tracking-wide text-right first:text-left">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {margemPorCategoria.map((r, i) => (
-                <tr key={r.categoria}
-                  onClick={() => irParaCategoria(r.categoria)}
-                  className={`border-b border-surface-border cursor-pointer hover:bg-surface-muted transition-colors
-                    ${i % 2 === 0 ? '' : 'bg-surface-base'}`}>
-                  <td className="px-4 py-2.5 font-medium text-brand-black flex items-center gap-1.5">
-                    {r.categoria}
-                    <span className="text-zinc-300 text-xs">→</span>
-                  </td>
-                  <td className="px-4 py-2.5 text-right text-zinc-500">{r.qtdProdutos}</td>
-                  <td className={`px-4 py-2.5 text-right font-mono font-semibold
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-0 divide-x divide-y divide-surface-border">
+          {margemPorCategoria.map((r, i) => (
+            <div key={r.categoria}
+              onClick={() => { setFiltroCat(r.categoria); onPageChange('rentabilidade'); }}
+              className="p-4 cursor-pointer hover:bg-surface-muted transition-colors group">
+              <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wide mb-2 truncate">
+                {r.categoria}
+              </p>
+              <div className="flex items-end justify-between">
+                <div>
+                  <p className={`text-[20px] font-bold leading-none
                     ${r.cmvMedio > 1 ? 'text-brand-crimson' : r.cmvMedio >= 0.30 ? 'text-amber-700' : 'text-brand-olive'}`}>
                     {pct(r.cmvMedio)}
-                  </td>
-                  <td className={`px-4 py-2.5 text-right font-mono font-semibold
+                  </p>
+                  <p className="text-[10px] text-zinc-400 mt-1">CMV médio</p>
+                </div>
+                <div className="text-right">
+                  <p className={`text-[15px] font-semibold
                     ${r.margemMedia >= 0.65 ? 'text-brand-olive' : 'text-amber-700'}`}>
                     {pct(r.margemMedia)}
-                  </td>
-                  <td className="px-4 py-2.5 text-right">
-                    {r.criticos > 0
-                      ? <span className="text-[11px] font-bold text-brand-crimson">{r.criticos}</span>
-                      : <span className="text-zinc-300">—</span>}
-                  </td>
-                  <td className="px-4 py-2.5 text-right">
-                    {r.atencao > 0
-                      ? <span className="text-[11px] font-semibold text-amber-700">{r.atencao}</span>
-                      : <span className="text-zinc-300">—</span>}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Desperdício por loja — clicável */}
-      <div className="bg-white border border-surface-border rounded-xl overflow-hidden">
-        <div className="px-5 py-3.5 border-b border-surface-border flex items-center justify-between">
-          <p className="font-semibold text-brand-black text-sm">Desperdício por loja</p>
-          <div className="flex items-center gap-3">
-            <p className="text-xs text-zinc-400">clique na loja para ver detalhes</p>
-            <p className="text-xs text-zinc-400">Total: {brlK(grandTotal)}</p>
-          </div>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-[13px]">
-            <thead>
-              <tr className="border-b border-surface-border">
-                <th className="px-4 py-2 text-[10px] font-semibold text-zinc-400 uppercase tracking-wide text-left">Loja</th>
-                {mesesVis.map(m => (
-                  <th key={m} className="px-4 py-2 text-[10px] font-semibold text-zinc-400 uppercase tracking-wide text-right capitalize">{m.slice(0,3)}</th>
-                ))}
-                <th className="px-4 py-2 text-[10px] font-semibold text-zinc-400 uppercase tracking-wide text-right">Total</th>
-                <th className="px-4 py-2 text-[10px] font-semibold text-zinc-400 uppercase tracking-wide text-right">Share</th>
-              </tr>
-            </thead>
-            <tbody>
-              {desperdicioByUnidade.map((row, i) => (
-                <tr key={row.unidade}
-                  onClick={() => irParaLoja(row.unidade)}
-                  className={`border-b border-surface-border cursor-pointer hover:bg-surface-muted transition-colors
-                    ${i % 2 === 0 ? '' : 'bg-surface-base'}`}>
-                  <td className="px-4 py-2.5">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full shrink-0"
-                        style={{background: CORES_DESP[i % CORES_DESP.length]}}/>
-                      <span className="font-medium text-brand-black">{row.unidade}</span>
-                      <span className="text-zinc-300 text-xs">→</span>
-                    </div>
-                    <div className="mt-1 ml-4 h-[2px] bg-surface-muted rounded-full w-20 overflow-hidden">
-                      <div className="h-full rounded-full"
-                        style={{width:`${(row.total/maxDesp*100).toFixed(0)}%`, background: CORES_DESP[i%CORES_DESP.length]}}/>
-                    </div>
-                  </td>
-                  {mesesVis.map(m => (
-                    <td key={m} className="px-4 py-2.5 text-right font-mono text-[11px] text-zinc-500">
-                      {brlK(row.porMes[m] ?? 0)}
-                    </td>
-                  ))}
-                  <td className="px-4 py-2.5 text-right font-mono text-[12px] font-semibold text-brand-black">
-                    {brlK(row.total)}
-                  </td>
-                  <td className="px-4 py-2.5 text-right font-mono text-[11px] text-zinc-400">
-                    {grandTotal > 0 ? (row.total / grandTotal * 100).toFixed(1) : 0}%
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </p>
+                  <p className="text-[10px] text-zinc-400 mt-1">margem</p>
+                </div>
+              </div>
+              {r.criticos > 0 && (
+                <p className="text-[10px] text-brand-crimson font-semibold mt-2">
+                  ⚠ {r.criticos} crítico{r.criticos > 1 ? 's' : ''}
+                </p>
+              )}
+            </div>
+          ))}
         </div>
       </div>
 
