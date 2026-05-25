@@ -330,6 +330,7 @@ export function CMVProvider({ children }) {
       produtos: produtosFiltrados,
       historico: historicoFiltrado,
       desperdicio: desperdicioFiltrado,
+      desperdicioRaw: desperdicio,
       // Derivados
       kpis, evolucaoCMV, variacaoSemanal, variacaoComponentes, volumePorProduto, vendasFiltradas, histProd, histComp,
       desperdicioByUnidade, desperdicioByClassificacao,

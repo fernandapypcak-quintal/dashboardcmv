@@ -133,11 +133,13 @@ function GrupoSection({ titulo, lojas, coresBar, desperdicioFiltrado = [], despe
 }
 
 export default function Desperdicio() {
-  const { desperdicio = [], desperdicioFiltrado = [], desperdicioByClassificacao = [] } = useCMV();
+  const { desperdicioRaw = [], desperdicio = [], desperdicioFiltrado = [], desperdicioByClassificacao = [] } = useCMV();
+  // Usa dados brutos para totais e seções de grupo (sem filtro de canal)
+  const dadosDesp = desperdicioRaw.length > 0 ? desperdicioRaw : desperdicio;
 
-  const grandTotal    = desperdicioFiltrado.reduce((s,r) => s+r.custoTotal, 0);
-  const totalGrandes  = desperdicioFiltrado.filter(r=>LOJAS_GRANDES.includes(r.unidade)).reduce((s,r)=>s+r.custoTotal,0);
-  const totalMenores  = desperdicioFiltrado.filter(r=>LOJAS_MENORES.includes(r.unidade)).reduce((s,r)=>s+r.custoTotal,0);
+  const grandTotal    = dadosDesp.reduce((s,r) => s+r.custoTotal, 0);
+  const totalGrandes  = dadosDesp.filter(r=>LOJAS_GRANDES.includes(r.unidade)).reduce((s,r)=>s+r.custoTotal,0);
+  const totalMenores  = dadosDesp.filter(r=>LOJAS_MENORES.includes(r.unidade)).reduce((s,r)=>s+r.custoTotal,0);
 
   return (
     <div className="p-5 space-y-4">
@@ -192,8 +194,8 @@ export default function Desperdicio() {
         titulo="🔴 Lojas Grandes"
         lojas={LOJAS_GRANDES}
         coresBar={CORES_GRANDES}
-        desperdicioFiltrado={desperdicioFiltrado}
-        desperdicioAll={desperdicio}
+        desperdicioFiltrado={dadosDesp}
+        desperdicioAll={dadosDesp}
       />
 
       {/* Seção Lojas Menores */}
@@ -201,15 +203,15 @@ export default function Desperdicio() {
         titulo="🟢 Lojas Menores"
         lojas={LOJAS_MENORES}
         coresBar={CORES_MENORES}
-        desperdicioFiltrado={desperdicioFiltrado}
-        desperdicioAll={desperdicio}
+        desperdicioFiltrado={dadosDesp}
+        desperdicioAll={dadosDesp}
       />
 
       {/* Lançamentos detalhados */}
       <div className="bg-white border border-surface-border rounded-xl overflow-hidden">
         <div className="px-5 py-3.5 border-b border-surface-border">
           <p className="font-semibold text-brand-black text-sm">Lançamentos detalhados</p>
-          <p className="text-xs text-zinc-400 mt-0.5">{desperdicioFiltrado.length} registros no período</p>
+          <p className="text-xs text-zinc-400 mt-0.5">{dadosDesp.length} registros no período</p>
         </div>
         <div className="overflow-x-auto max-h-[360px] overflow-y-auto">
           <table className="w-full text-[12px]">
@@ -221,7 +223,7 @@ export default function Desperdicio() {
               </tr>
             </thead>
             <tbody>
-              {desperdicioFiltrado.slice(0, 300).map((r, i) => (
+              {dadosDesp.slice(0, 300).map((r, i) => (
                 <tr key={i} className={`border-b border-surface-border hover:bg-surface-muted ${i%2===0?'':'bg-surface-base'}`}>
                   <td className="px-4 py-2 text-zinc-400 whitespace-nowrap">{r.data}</td>
                   <td className="px-4 py-2 font-medium text-brand-black">
