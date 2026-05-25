@@ -9,9 +9,9 @@ const brl  = v => `R$ ${(v||0).toFixed(2)}`;
 const CORES_GRANDES = ['#8C1414','#c0392b','#e74c3c','#f1948a'];
 const CORES_MENORES = ['#97A624','#2ecc71','#27ae60','#1e8449','#a9cce3','#2980b9'];
 
-function GrupoSection({ titulo, lojas, coresBar, desperdicioFiltrado, desperdicioAll }) {
+function GrupoSection({ titulo, lojas, coresBar, desperdicioFiltrado = [], desperdicioAll = [] }) {
   // Filtra só as lojas deste grupo
-  const dadosGrupo = lojas.map(loja => {
+  const dadosGrupo = (lojas || []).map(loja => {
     const rows = desperdicioFiltrado.filter(r => r.unidade === loja);
     const total     = rows.reduce((s,r) => s+r.custoTotal, 0);
     const registros = rows.length;
@@ -133,7 +133,7 @@ function GrupoSection({ titulo, lojas, coresBar, desperdicioFiltrado, desperdici
 }
 
 export default function Desperdicio() {
-  const { desperdicio, desperdicioFiltrado, desperdicioByClassificacao } = useCMV();
+  const { desperdicio = [], desperdicioFiltrado = [], desperdicioByClassificacao = [] } = useCMV();
 
   const grandTotal    = desperdicioFiltrado.reduce((s,r) => s+r.custoTotal, 0);
   const totalGrandes  = desperdicioFiltrado.filter(r=>LOJAS_GRANDES.includes(r.unidade)).reduce((s,r)=>s+r.custoTotal,0);
