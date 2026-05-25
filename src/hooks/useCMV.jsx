@@ -112,7 +112,7 @@ export function CMVProvider({ children }) {
 
   const desperdicioFiltrado = useMemo(() =>
     desperdicio.filter(r =>
-      r.unidade && r.custoTotal > 0 &&
+      r.unidade &&
       (filtroLoja === 'Todas' || r.unidade === filtroLoja) &&
       (filtroMes  === 'Todos' || r.mes === filtroMes)
     ),
