@@ -37,10 +37,10 @@ function parseDesperdicio(r) {
     semana:        n(r.semana),
     unidade:       normalizaUnidade(s(r.unidade)),
     funcionario:   s(r.funcionario),
-    produto:       s(r.produto),
+    produto:       s(r.nome_produto || r.produto),
     quantidade:    n(r.quantidade),
     custoUnit:     n(r.custo_unit),
-    custoTotal:    n(r.custo_total),
+    custoTotal:    n(r.custo_total) || n(r.valor_de_custo_total) || n(r.valor_total),
     valorVenda:    n(r.valor_venda),
     classificacao: s(r.classificacao).trim(),
     justificativa: s(r.justificativa),
@@ -126,7 +126,8 @@ export async function loadCMVData() {
 
   const desperdicio = (resDesperdicio.desperdicio ?? [])
     .map(parseDesperdicio)
-    .filter(r => r.unidade && r.custoTotal > 0);
+    .filter(r => r.unidade);
+  console.log('[desperdicio] parsed:', desperdicio.length, '| exemplo unidade:', desperdicio[0]?.unidade, '| custo:', desperdicio[0]?.custoTotal);
 
   const histProd = (resHistProd.hist_prod ?? [])
     .filter(r => r.semana_iso && r.cod_pa)
