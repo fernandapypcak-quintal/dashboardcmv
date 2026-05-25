@@ -88,12 +88,16 @@ export async function loadDeliveryData(fichas = []) {
     .sort((a, b) => b.custoTotal - a.custoTotal);
 
   // KPIs consolidados do delivery
+  // CMV calculado apenas sobre produtos COM ficha técnica
+  const comFicha     = lista.filter(r => r.temFicha);
   const receitaTotal = lista.reduce((s, r) => s + r.receitaTotal, 0);
   const custoTotal   = lista.reduce((s, r) => s + r.custoTotal, 0);
-  const cmvGeral     = receitaTotal > 0 ? custoTotal / receitaTotal : 0;
+  const receitaComFicha = comFicha.reduce((s, r) => s + r.receitaTotal, 0);
+  const custoComFicha   = comFicha.reduce((s, r) => s + r.custoTotal, 0);
+  const cmvGeral     = receitaComFicha > 0 ? custoComFicha / receitaComFicha : 0;
   const semFicha     = lista.filter(r => !r.temFicha).length;
 
   console.log(`[Delivery] ${vendas.length} vendas | ${lista.length} produtos | CMV ${(cmvGeral*100).toFixed(1)}% | sem ficha: ${semFicha}`);
 
-  return { vendas, porProduto: lista, receitaTotal, custoTotal, cmvGeral, semFicha };
+  return { vendas, porProduto: lista, receitaTotal, custoTotal, receitaComFicha, custoComFicha, cmvGeral, semFicha };
 }

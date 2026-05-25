@@ -43,7 +43,7 @@ export default function DeliveryRentabilidade() {
     </div>
   );
 
-  const { porProduto, receitaTotal, custoTotal, cmvGeral, semFicha } = dados;
+  const { porProduto, receitaTotal, custoTotal, receitaComFicha, cmvGeral, semFicha } = dados;
 
   // Filtra produtos
   const filtrados = porProduto.filter(r => {
@@ -83,9 +83,10 @@ export default function DeliveryRentabilidade() {
           <p className={`text-[26px] font-bold leading-none ${cmvGeral>0.30?'text-amber-700':'text-brand-olive'}`}>
             {pct(cmvGeral)}
           </p>
-          <p className={`text-[12px] mt-1.5 font-medium ${cmvGeral>0.30?'text-amber-700':'text-brand-olive'}`}>
-            {cmvGeral>0.30?'↑ acima da meta 30%':'✓ dentro da meta 30%'}
-          </p>
+          <p className="text-[11px] text-zinc-400 mt-1">só produtos com ficha técnica</p>
+          {semFicha > 0 && (
+            <p className="text-[11px] text-amber-700 mt-0.5">{semFicha} produtos sem ficha excluídos</p>
+          )}
         </div>
         <div className="bg-white border border-surface-border rounded-xl p-4">
           <p className="text-[10.5px] font-semibold text-zinc-400 uppercase tracking-wide mb-2">Produtos</p>
