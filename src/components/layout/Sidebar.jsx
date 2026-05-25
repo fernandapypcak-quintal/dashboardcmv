@@ -25,14 +25,8 @@ export default function Sidebar({ activePage, onPageChange }) {
       {/* Logo */}
       <div className={`flex items-center border-b border-surface-border bg-brand-black ${collapsed ? 'justify-center px-3 py-4' : 'px-4 py-3'}`}>
         {collapsed
-          ? <div className="w-8 h-8 rounded-lg bg-brand-olive flex items-center justify-center text-white font-bold text-xs">QE</div>
-          : <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-brand-olive flex items-center justify-center text-white font-bold text-xs shrink-0">QE</div>
-              <div>
-                <p className="text-white text-[13px] font-semibold leading-tight">Quintal do Espeto</p>
-                <p className="text-zinc-400 text-[11px]">CMV · Rentabilidade</p>
-              </div>
-            </div>
+          ? <img src="/logo.png" alt="Quintal do Espeto" className="w-8 h-8 object-contain"/>
+          : <img src="/logo.png" alt="Quintal do Espeto" className="h-9 w-auto object-contain"/>
         }
       </div>
 
