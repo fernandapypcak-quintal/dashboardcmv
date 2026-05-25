@@ -1,14 +1,26 @@
 import { useState } from 'react';
 import { CMVProvider, useCMV } from './hooks/useCMV';
-import Sidebar       from './components/layout/Sidebar';
-import Header        from './components/layout/Header';
-import Home          from './components/pages/Home';
-import Rentabilidade from './components/pages/Rentabilidade';
-import Volume        from './components/pages/Volume';
-import Desperdicio   from './components/pages/Desperdicio';
-import Variacao      from './components/pages/Variacao';
+import Sidebar              from './components/layout/Sidebar';
+import Header               from './components/layout/Header';
+import Home                 from './components/pages/Home';
+import Rentabilidade        from './components/pages/Rentabilidade';
+import Volume               from './components/pages/Volume';
+import Desperdicio          from './components/pages/Desperdicio';
+import Variacao             from './components/pages/Variacao';
+import DeliveryRentabilidade from './components/pages/DeliveryRentabilidade';
+import DeliveryVolume       from './components/pages/DeliveryVolume';
+import DeliveryVariacao     from './components/pages/DeliveryVariacao';
 
-const PAGES = { home: Home, rentabilidade: Rentabilidade, volume: Volume, desperdicio: Desperdicio, variacao: Variacao };
+const PAGES = {
+  home:              Home,
+  rentabilidade:     Rentabilidade,
+  volume:            Volume,
+  desperdicio:       Desperdicio,
+  variacao:          Variacao,
+  delivery_rent:     DeliveryRentabilidade,
+  delivery_volume:   DeliveryVolume,
+  delivery_variacao: DeliveryVariacao,
+};
 
 function Inner() {
   const [page, setPage] = useState('home');
@@ -17,9 +29,9 @@ function Inner() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-surface-base">
-      <Sidebar activePage={page} onPageChange={setPage} />
+      <Sidebar activePage={page} onPageChange={setPage}/>
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header activePage={page} />
+        <Header activePage={page}/>
         <main className="flex-1 overflow-y-auto">
           {loading ? (
             <div className="flex items-center justify-center h-full">
@@ -40,7 +52,7 @@ function Inner() {
               </div>
             </div>
           ) : (
-            <Page onPageChange={setPage} />
+            <Page onPageChange={setPage}/>
           )}
         </main>
       </div>
@@ -49,5 +61,5 @@ function Inner() {
 }
 
 export default function App() {
-  return <CMVProvider><Inner /></CMVProvider>;
+  return <CMVProvider><Inner/></CMVProvider>;
 }

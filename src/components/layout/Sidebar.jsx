@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { LayoutDashboard, BarChart3, Trash2, TrendingUp, Clock } from 'lucide-react';
+import { LayoutDashboard, BarChart3, Trash2, TrendingUp } from 'lucide-react';
 
 const NAV_SALAO = [
   { id: 'home',        label: 'Visão Geral',      icon: LayoutDashboard },
@@ -35,7 +35,7 @@ export default function Sidebar({ activePage, onPageChange }) {
         {!collapsed && (
           <div className="flex items-center gap-2 px-3 pb-2">
             <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest">Salão</span>
-            <span className="w-1.5 h-1.5 rounded-full bg-brand-olive"></span>
+            <span className="w-1.5 h-1.5 rounded-full bg-brand-olive"/>
           </div>
         )}
         {NAV_SALAO.map(({ id, label, icon: Icon }) => {
@@ -55,33 +55,34 @@ export default function Sidebar({ activePage, onPageChange }) {
           );
         })}
 
-        {/* Divisor */}
+        {/* Divisor Delivery */}
         <div className={`pt-4 pb-1 ${collapsed ? 'px-1' : 'px-3'}`}>
           {collapsed
             ? <div className="border-t border-surface-border"/>
             : <div className="flex items-center gap-2">
-                <span className="text-[10px] font-semibold text-zinc-300 uppercase tracking-widest">Delivery</span>
-                <span className="text-[9px] font-medium text-zinc-300 bg-surface-muted px-1.5 py-0.5 rounded-full">em breve</span>
+                <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest">Delivery</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-400"/>
               </div>
           }
         </div>
 
-        {/* Delivery — desativado */}
-        {NAV_DELIVERY.map(({ id, label, icon: Icon }) => (
-          <div key={id}
-            title={collapsed ? `${label} (em breve)` : undefined}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] cursor-not-allowed
-              ${collapsed ? 'justify-center' : ''}
-              text-zinc-300`}>
-            <Icon size={15} />
-            {!collapsed && (
-              <span className="flex items-center gap-2">
-                {label}
-                <Clock size={11} className="text-zinc-300"/>
-              </span>
-            )}
-          </div>
-        ))}
+        {/* Delivery — ativo */}
+        {NAV_DELIVERY.map(({ id, label, icon: Icon }) => {
+          const active = activePage === id;
+          return (
+            <button key={id} onClick={() => onPageChange(id)}
+              title={collapsed ? label : undefined}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all
+                ${collapsed ? 'justify-center' : ''}
+                ${active
+                  ? 'bg-brand-black text-white'
+                  : 'text-zinc-500 hover:text-brand-black hover:bg-surface-muted'}`}>
+              <Icon size={15}/>
+              {!collapsed && <span>{label}</span>}
+              {!collapsed && active && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-400"/>}
+            </button>
+          );
+        })}
       </div>
 
       {/* Collapse */}
