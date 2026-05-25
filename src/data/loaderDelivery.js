@@ -1,87 +1,99 @@
 // ── LOADER DELIVERY ────────────────────────────────────────
-// Preparado para quando a seção Delivery for ativada na sidebar
-// Chama ?tipo=vendas_delivery que já explode combos via ficha técnica
+// Fonte de dados:
+//   Custo      → ficha_tecnica (mesma do salão, cruzada por SKU ZIG)
+//   Preço venda → ZIG (lojas "Delivery *" já têm preço delivery)
+//   Volume     → ZIG saida-produtos canal DELIVERY
+//
+// Combos: itens dentro do combo vêm via campo `additions` da ZIG
+// e cruzam com a ficha técnica pelo SKU de cada item.
 
 import { APPS_SCRIPT_URL } from './config';
 
-const n = v => parseFloat(String(v).replace(',', '.')) || 0;
+const n = v => parseFloat(String(v ?? '').replace(',', '.')) || 0;
 const s = v => String(v ?? '').trim();
 
-async function fetchDelivery() {
+async function fetchTipo(tipo) {
   try {
-    const res = await fetch(`${APPS_SCRIPT_URL}?tipo=vendas_delivery`);
+    const res = await fetch(`${APPS_SCRIPT_URL}?tipo=${tipo}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.json();
   } catch (e) {
-    console.warn('[delivery] Falha:', e.message);
+    console.warn(`[delivery] Falha ao buscar ${tipo}:`, e.message);
     return {};
   }
 }
 
-function parseVendaDelivery(r) {
-  return {
-    txId:           s(r.txId),
-    dataVenda:      s(r.dataVenda),
-    loja:           s(r.loja),
-    periodo:        s(r.periodo),
-    tipo:           s(r.tipo),           // AVULSO | COMBO_FIXO | COMBO_MONTAVEL
-    skuCombo:       s(r.skuCombo),
-    nomeCombo:      s(r.nomeCombo),
-    categoriaCombo: s(r.categoriaCombo),
-    precoVenda:     n(r.precoVenda),
-    descontoUnit:   n(r.descontoUnit),
-    receitaUnit:    n(r.receitaUnit),
-    qtd:            n(r.qtd),
-    custoUnit:      n(r.custoUnit),
-    cmvPct:         n(r.cmvPct),
-    // Itens do combo (para combos fixos)
-    itens: (r.itens || []).map(it => ({
-      skuItem:         s(it.skuItem),
-      nomeItem:        s(it.nomeItem),
-      qtd:             n(it.qtd),
-      custoItem:       n(it.custoItem),
-      participacaoPct: n(it.participacaoPct),
-    })),
-  };
-}
+export async function loadDeliveryData(fichas = []) {
+  // fichas já vem do useCMV — não busca de novo
+  // Monta mapa SKU ZIG → custo unitário da ficha técnica
+  const custoPorSku = {};
+  fichas.forEach(f => {
+    if (f.skuZig && !custoPorSku[f.skuZig]) {
+      custoPorSku[f.skuZig] = {
+        custo:        f.custoIngr,
+        nomePa:       f.nomePa,
+        categoria:    f.categoria,
+        subcategoria: f.subcategoria,
+      };
+    }
+  });
 
-export async function loadDeliveryData() {
-  const res = await fetchDelivery();
-  const vendas = (res.vendas ?? [])
-    .map(parseVendaDelivery)
-    .filter(r => r.skuCombo && r.qtd > 0);
+  // Busca vendas do canal delivery da aba zig_vendas
+  const res = await fetchTipo('vendas_delivery');
+  const vendas = (res.vendas ?? []).filter(r => r.productSku && r.count > 0);
 
-  // Agrupa por produto para análise de CMV
+  // Agrupa por SKU e calcula CMV com custo da ficha técnica
   const porProduto = new Map();
+
   vendas.forEach(v => {
-    const key = v.skuCombo;
-    if (!porProduto.has(key)) {
-      porProduto.set(key, {
-        skuCombo:       v.skuCombo,
-        nomeCombo:      v.nomeCombo,
-        categoriaCombo: v.categoriaCombo,
-        tipo:           v.tipo,
-        qtdTotal:       0,
-        receitaTotal:   0,
-        custoTotal:     0,
-        cmvPct:         v.cmvPct,
-        itens:          v.itens,
+    const sku    = s(v.productSku);
+    const preco  = n(v.unitValue);
+    const desc   = n(v.discountValue);
+    const qtd    = n(v.count);
+    const ficha  = custoPorSku[sku];
+    const custo  = ficha ? ficha.custo : 0;
+    const receita = Math.max(0, preco - desc) * qtd;
+    const custoTotal = custo * qtd;
+
+    if (!porProduto.has(sku)) {
+      porProduto.set(sku, {
+        skuZig:       sku,
+        nomePa:       ficha?.nomePa       || s(v.productName),
+        categoria:    ficha?.categoria    || s(v.productCategory),
+        subcategoria: ficha?.subcategoria || '',
+        tipo:         s(v.tipo) || 'AVULSO',
+        qtdTotal:     0,
+        receitaTotal: 0,
+        custoTotal:   0,
+        precoMedio:   0,
+        custoUnit:    custo,
+        temFicha:     !!ficha,
       });
     }
-    const p = porProduto.get(key);
-    p.qtdTotal    += v.qtd;
-    p.receitaTotal += v.receitaUnit * v.qtd;
-    p.custoTotal   += v.custoUnit * v.qtd;
+
+    const p = porProduto.get(sku);
+    p.qtdTotal    += qtd;
+    p.receitaTotal += receita;
+    p.custoTotal   += custoTotal;
   });
 
-  // Recalcula CMV real com volume
+  // Calcula CMV real e preço médio de venda
   porProduto.forEach(p => {
-    p.cmvReal = p.receitaTotal > 0 ? p.custoTotal / p.receitaTotal : p.cmvPct;
+    p.cmvReal   = p.receitaTotal > 0 ? p.custoTotal / p.receitaTotal : 0;
+    p.precoMedio = p.qtdTotal > 0 ? p.receitaTotal / p.qtdTotal : 0;
+    p.margemPct  = p.receitaTotal > 0 ? (p.receitaTotal - p.custoTotal) / p.receitaTotal : 0;
   });
 
-  console.log(`[Delivery] ${vendas.length} transações | ${porProduto.size} produtos únicos`);
-  return {
-    vendas,
-    porProduto: [...porProduto.values()].sort((a, b) => b.custoTotal - a.custoTotal),
-  };
+  const lista = [...porProduto.values()]
+    .sort((a, b) => b.custoTotal - a.custoTotal);
+
+  // KPIs consolidados do delivery
+  const receitaTotal = lista.reduce((s, r) => s + r.receitaTotal, 0);
+  const custoTotal   = lista.reduce((s, r) => s + r.custoTotal, 0);
+  const cmvGeral     = receitaTotal > 0 ? custoTotal / receitaTotal : 0;
+  const semFicha     = lista.filter(r => !r.temFicha).length;
+
+  console.log(`[Delivery] ${vendas.length} vendas | ${lista.length} produtos | CMV ${(cmvGeral*100).toFixed(1)}% | sem ficha: ${semFicha}`);
+
+  return { vendas, porProduto: lista, receitaTotal, custoTotal, cmvGeral, semFicha };
 }
