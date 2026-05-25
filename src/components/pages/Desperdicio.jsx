@@ -133,9 +133,12 @@ function GrupoSection({ titulo, lojas, coresBar, desperdicioFiltrado = [], despe
 }
 
 export default function Desperdicio() {
-  const { desperdicioRaw = [], desperdicio = [], desperdicioFiltrado = [], desperdicioByClassificacao = [] } = useCMV();
-  // Usa dados brutos para totais e seções de grupo (sem filtro de canal)
-  const dadosDesp = desperdicioRaw.length > 0 ? desperdicioRaw : desperdicio;
+  const { desperdicioRaw = [], desperdicio = [], desperdicioFiltrado = [], desperdicioByClassificacao = [], filtroLoja, filtroMes } = useCMV();
+  // Aplica filtros de loja e mês nos dados brutos
+  const dadosDesp = (desperdicioRaw.length > 0 ? desperdicioRaw : desperdicio).filter(r =>
+    (filtroLoja === 'Todas' || r.unidade === filtroLoja) &&
+    (filtroMes  === 'Todos' || r.mes === filtroMes)
+  );
 
   const grandTotal    = dadosDesp.reduce((s,r) => s+r.custoTotal, 0);
   const totalGrandes  = dadosDesp.filter(r=>LOJAS_GRANDES.includes(r.unidade)).reduce((s,r)=>s+r.custoTotal,0);
