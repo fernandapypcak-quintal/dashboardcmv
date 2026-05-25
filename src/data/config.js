@@ -26,6 +26,10 @@ export const MAPA_LOJAS = {
 };
 
 // Lojas ativas (as 10 unidades da rede) — usado para filtrar e normalizar
+// Segmentação por porte
+export const LOJAS_GRANDES = ['TATUAPE', 'CARINAS', 'SANTO ANDRE', 'SANTANA'];
+export const LOJAS_MENORES = ['VILA MARIANA', 'PAVAO', 'VILA MADALENA', 'LAPA', 'PERDIZES', 'CHACARA'];
+
 export const LOJAS_ATIVAS = [
   'CARINAS', 'CHACARA', 'LAPA', 'PAVAO', 'PERDIZES',
   'SANTANA', 'SANTO ANDRE', 'TATUAPE', 'VILA MADALENA', 'VILA MARIANA',

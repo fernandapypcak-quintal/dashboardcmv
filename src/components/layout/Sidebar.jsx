@@ -23,7 +23,7 @@ export default function Sidebar({ activePage, onPageChange }) {
       style={{minHeight:'100vh'}}>
 
       {/* Logo */}
-      <div className={`flex items-center border-b border-surface-border bg-brand-black ${collapsed ? 'justify-center px-3 py-4' : 'px-4 py-3'}`}>
+      <div className={`flex items-center border-b border-surface-border bg-brand-olive ${collapsed ? 'justify-center px-3 py-4' : 'px-4 py-3'}`}>
         {collapsed
           ? <img src="/logo.png" alt="Quintal do Espeto" className="w-8 h-8 object-contain"/>
           : <img src="/logo.png" alt="Quintal do Espeto" className="h-9 w-auto object-contain"/>
