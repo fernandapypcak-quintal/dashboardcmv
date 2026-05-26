@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useCMV } from '../../hooks/useCMV';
 import { loadDeliveryData } from '../../data/loaderDelivery';
 import PainelIngredientes from '../ui/PainelIngredientes';
-import { Search, Settings2 } from 'lucide-react';
+import { Search, Settings2, Save, Check } from 'lucide-react';
+import { saveParametros } from '../../data/loader';
 
 const brl  = v => `R$ ${(v||0).toFixed(2)}`;
 const brlK = v => v >= 1000 ? `R$ ${(v/1000).toFixed(1)}k` : `R$ ${(v||0).toFixed(0)}`;
@@ -17,10 +18,28 @@ export default function DeliveryRentabilidade() {
   const [filtroCrit, setFiltroCrit] = useState('Todos');
   const [painel,     setPainel]     = useState(null);
 
-  // Parâmetros editáveis globais
-  const [taxaIfood,      setTaxaIfood]      = useState(24.8); // %
-  const [embalagemPadrao,setEmbalagemPadrao]= useState(3.00); // R$
-  const [embalagensCustom, setEmbalagensCustom] = useState({}); // sku → valor
+  // Parâmetros — carregados da planilha via hook
+  const [taxaIfood,       setTaxaIfood]       = useState(24.8);
+  const [embalagemPadrao, setEmbalagemPadrao] = useState(3.00);
+  const [embalagensCustom, setEmbalagensCustom] = useState({});
+  const [salvando,  setSalvando]  = useState(false);
+  const [salvoOk,   setSalvoOk]   = useState(false);
+
+  // Sincroniza com parâmetros vindos da planilha
+  useEffect(() => {
+    if (parametros) {
+      if (parametros.taxa_ifood)       setTaxaIfood(parametros.taxa_ifood);
+      if (parametros.embalagem_padrao) setEmbalagemPadrao(parametros.embalagem_padrao);
+    }
+  }, [parametros]);
+
+  async function handleSalvar() {
+    setSalvando(true);
+    await saveParametros({ taxa_ifood: taxaIfood, embalagem_padrao: embalagemPadrao });
+    setSalvando(false);
+    setSalvoOk(true);
+    setTimeout(() => setSalvoOk(false), 3000);
+  }
 
   useEffect(() => {
     loadDeliveryData(produtos, filtroSemana)
@@ -124,11 +143,20 @@ export default function DeliveryRentabilidade() {
               <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[11px] text-zinc-400">R$</span>
             </div>
           </div>
-          <div className="ml-auto text-right">
-            <p className="text-[11px] text-zinc-400">CMV com ajustes</p>
-            <p className={`text-[20px] font-bold ${cmvGeral>0.30?'text-amber-700':'text-brand-olive'}`}>
-              {pct(cmvGeral)}
-            </p>
+          <div className="ml-auto flex items-center gap-4">
+            <div className="text-right">
+              <p className="text-[11px] text-zinc-400">CMV com ajustes</p>
+              <p className={`text-[20px] font-bold ${cmvGeral>0.30?'text-amber-700':'text-brand-olive'}`}>
+                {pct(cmvGeral)}
+              </p>
+            </div>
+            <button onClick={handleSalvar} disabled={salvando}
+              className={`flex items-center gap-1.5 px-4 h-8 rounded-lg text-[12px] font-semibold transition-all
+                ${salvoOk
+                  ? 'bg-brand-olive text-white'
+                  : 'bg-brand-black text-white hover:bg-zinc-800'}`}>
+              {salvoOk ? <><Check size={13}/> Salvo!</> : salvando ? 'Salvando...' : <><Save size={13}/> Salvar</>}
+            </button>
           </div>
         </div>
       </div>

@@ -16,6 +16,7 @@ export function CMVProvider({ children }) {
   const [vendas,     setVendas]     = useState([]);
   const [histProd,   setHistProd]   = useState([]);
   const [histComp,   setHistComp]   = useState([]);
+  const [parametros, setParametros] = useState({ taxa_ifood: 24.8, embalagem_padrao: 3.0 });
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState(null);
 
@@ -29,13 +30,14 @@ export function CMVProvider({ children }) {
 
   useEffect(() => {
     loadCMVData()
-      .then(({ fichas, historico, histProd, histComp, desperdicio, vendas }) => {
+      .then(({ fichas, historico, histProd, histComp, desperdicio, vendas, parametros }) => {
         setFichas(fichas);
         setHistorico(historico);
         setDesperdicio(desperdicio);
         setVendas(vendas || []);
         setHistProd(histProd || []);
         setHistComp(histComp || []);
+        setParametros(parametros || { taxa_ifood: 24.8, embalagem_padrao: 3.0 });
         setLoading(false);
       })
       .catch(e => { setError(e.message); setLoading(false); });
@@ -339,7 +341,7 @@ export function CMVProvider({ children }) {
       desperdicio: desperdicioFiltrado,
       desperdicioRaw: desperdicio,
       // Derivados
-      kpis, evolucaoCMV, variacaoSemanal, variacaoComponentes, volumePorProduto, vendasFiltradas, histProd, histComp,
+      kpis, evolucaoCMV, variacaoSemanal, variacaoComponentes, volumePorProduto, vendasFiltradas, histProd, histComp, parametros,
       desperdicioByUnidade, desperdicioByClassificacao,
       margemPorCategoria,
       // Filtros

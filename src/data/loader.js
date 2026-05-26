@@ -97,15 +97,31 @@ export async function fetchTipo(tipo, params = {}) {
   }
 }
 
+// ── Salva parâmetros no Apps Script ───────────────────────────
+export async function saveParametros(params) {
+  try {
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({ tipo: 'salvar_parametros', parametros: params }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (e) {
+    console.warn('[loader] Falha ao salvar parâmetros:', e.message);
+    return { erro: e.message };
+  }
+}
+
 // ── Entry point ────────────────────────────────────────────
 export async function loadCMVData() {
-  const [resFichas, resDesperdicio, resHistorico, resHistProd, resHistComp, resVendas] = await Promise.all([
+  const [resFichas, resDesperdicio, resHistorico, resHistProd, resHistComp, resVendas, resParams] = await Promise.all([
     fetchTipo('fichas'),
     fetchTipo('desperdicio'),
     fetchTipo('historico'),
     fetchTipo('hist_prod'),
     fetchTipo('hist_comp'),
     fetchTipo('vendas'),
+    fetchTipo('parametros'),
   ]);
 
   const fichas = (resFichas.fichas ?? [])
@@ -158,6 +174,8 @@ export async function loadCMVData() {
     .map(parseVenda)
     .filter(r => r.productSku && r.count > 0);
 
+  const parametros = resParams.parametros ?? { taxa_ifood: 24.8, embalagem_padrao: 3.0 };
+
   console.log(`[CMV] fichas=${fichas.length} histórico=${historico.length} desperdício=${desperdicio.length} histProd=${histProd.length} histComp=${histComp.length} vendas=${vendas.length}`);
-  return { fichas, historico, desperdicio, histProd, histComp, vendas };
+  return { fichas, historico, desperdicio, histProd, histComp, vendas, parametros };
 }
