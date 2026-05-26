@@ -150,8 +150,8 @@ export function CMVProvider({ children }) {
     });
     console.log('[Volume] SKUs com venda:', Object.keys(vendaMap).length, '| Total itens:', Object.values(vendaMap).reduce((s,v)=>s+v.qtd,0));
 
-    // Cruza com ficha técnica pelo SKU ZIG
-    return produtosUnicos.map(p => {
+    // Cruza com ficha técnica pelo SKU ZIG (respeitando filtro de categoria)
+    return produtosFiltrados.map(p => {
       const venda = vendaMap[p.skuZig] || { qtd: 0, receita: 0 };
       const custoTotal  = venda.qtd * p.custoIngr;
       const receitaReal = venda.receita;
