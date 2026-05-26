@@ -92,8 +92,22 @@ export function CMVProvider({ children }) {
       });
     });
     // Recalcula custo total como soma dos ingredientes
+    // Exceção: produto com 1 único ingrediente usa custo_unit (evita erro de pacote vs unitário)
     map.forEach(p => {
-      p.custoIngr = p.ingredientes.reduce((s,i)=>s+i.custoIngr, 0);
+      if (p.ingredientes.length === 1) {
+        // Produto com ingrediente único — custo é unitário (ex: Bovino In Natura = 1 espeto)
+        p.custoIngr = p.ingredientes[0].custoUnit;
+      } else {
+        // Produto composto — soma todos os ingredientes normalmente
+        p.custoIngr = p.ingredientes.reduce((s,i) => s + i.custoIngr, 0);
+      }
+      // Recalcula CMV e margem com custo correto
+      if (p.precoVenda > 0) {
+        p.cmvPct          = p.custoIngr / p.precoVenda;
+        p.margemContribR  = p.precoVenda - p.custoIngr;
+        p.margemContribPct = (p.precoVenda - p.custoIngr) / p.precoVenda;
+        p.precoSugerido   = p.custoIngr > 0 ? p.custoIngr / 0.30 : p.precoVenda;
+      }
     });
     return [...map.values()];
   }, [fichas]);
