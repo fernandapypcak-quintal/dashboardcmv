@@ -25,6 +25,7 @@ export function CMVProvider({ children }) {
   const [filtroCat,     setFiltroCat]     = useState('Todas');
   const [filtroMes,     setFiltroMes]     = useState('Todos');
   const [filtroPeriodo, setFiltroPeriodo] = useState('Todos'); // Todos | Almoço | Jantar/Noite
+  const [filtroSemana,  setFiltroSemana]  = useState('atual'); // atual | anterior | 2semanas
 
   useEffect(() => {
     loadCMVData()
@@ -117,6 +118,12 @@ export function CMVProvider({ children }) {
       (filtroMes  === 'Todos' || r.mes === filtroMes)
     ),
   [desperdicio, filtroLoja, filtroMes]);
+
+  // ── Semanas disponíveis nas vendas ────────────────────────
+  const semanasDisponiveis = useMemo(() => {
+    const sems = [...new Set(vendas.map(r => r.semanaISO || '').filter(Boolean))].sort().reverse();
+    return sems;
+  }, [vendas]);
 
   // ── Vendas filtradas ──────────────────────────────────────
   const vendasFiltradas = useMemo(() =>
@@ -342,6 +349,8 @@ export function CMVProvider({ children }) {
       filtroCat,     setFiltroCat,
       filtroMes,     setFiltroMes,
       filtroPeriodo, setFiltroPeriodo,
+      filtroSemana,  setFiltroSemana,
+      semanasDisponiveis,
     }}>
       {children}
     </Ctx.Provider>

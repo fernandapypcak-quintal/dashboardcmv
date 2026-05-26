@@ -8,15 +8,15 @@ const pct  = v => `${((v||0)*100).toFixed(1)}%`;
 const CORES = ['#97A624','#D9B504','#8C1414','#2980b9','#e67e22','#9b59b6','#009e74'];
 
 export default function DeliveryVolume() {
-  const { produtos } = useCMV();
+  const { produtos, filtroSemana } = useCMV();
   const [dados,   setDados]   = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadDeliveryData(produtos)
+    loadDeliveryData(produtos, filtroSemana)
       .then(d => { setDados(d); setLoading(false); })
       .catch(() => setLoading(false));
-  }, [produtos]);
+  }, [produtos, filtroSemana]);
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">

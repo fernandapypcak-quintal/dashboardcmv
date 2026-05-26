@@ -15,12 +15,12 @@ const TITLES = {
 const FILTROS_PAGINA = {
   home:              ['categoria'],
   rentabilidade:     ['categoria'],
-  volume:            ['categoria'],
+  volume:            ['categoria', 'semana'],
   desperdicio:       ['mes'],
   variacao:          ['categoria'],
-  delivery_rent:     [],
-  delivery_volume:   [],
-  delivery_variacao: [],
+  delivery_rent:     ['semana'],
+  delivery_volume:   ['semana'],
+  delivery_variacao: ['semana'],
 };
 
 export default function Header({ activePage }) {
@@ -30,6 +30,8 @@ export default function Header({ activePage }) {
     filtroPeriodo, setFiltroPeriodo,
     filtroCat,     setFiltroCat,
     filtroMes,     setFiltroMes,
+    filtroSemana,  setFiltroSemana,
+    semanasDisponiveis,
   } = useCMV();
 
   const filtrosLocais = FILTROS_PAGINA[activePage] ?? [];
@@ -68,6 +70,15 @@ export default function Header({ activePage }) {
             {filtrosLocais.includes('mes') && (
               <Sel label="Mês" value={filtroMes} onChange={setFiltroMes} opts={opcoesMeses} />
             )}
+            {filtrosLocais.includes('semana') && (
+              <Sel
+                label="Semana"
+                value={filtroSemana}
+                onChange={setFiltroSemana}
+                opts={['atual', 'anterior', ...(semanasDisponiveis || [])]}
+                labels={{ atual: 'Semana atual', anterior: 'Semana passada' }}
+              />
+            )}
           </div>
         )}
       </div>
@@ -75,7 +86,7 @@ export default function Header({ activePage }) {
   );
 }
 
-function Sel({ label, value, onChange, opts }) {
+function Sel({ label, value, onChange, opts, labels = {} }) {
   const isActive = value !== opts[0];
   return (
     <div className="flex items-center gap-1.5">
@@ -85,7 +96,7 @@ function Sel({ label, value, onChange, opts }) {
           ${isActive
             ? 'border-brand-black bg-brand-black text-white font-semibold'
             : 'border-surface-border bg-white text-brand-black hover:border-zinc-400'}`}>
-        {opts.map(o => <option key={o} value={o}>{o}</option>)}
+        {opts.map(o => <option key={o} value={o}>{labels[o] || o}</option>)}
       </select>
     </div>
   );

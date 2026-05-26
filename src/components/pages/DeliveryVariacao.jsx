@@ -6,15 +6,15 @@ const pct = v => `${((v||0)*100).toFixed(1)}%`;
 const brl = v => `R$ ${(v||0).toFixed(2)}`;
 
 export default function DeliveryVariacao() {
-  const { produtos, histComp } = useCMV();
+  const { produtos, histComp, filtroSemana } = useCMV();
   const [dados,   setDados]   = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadDeliveryData(produtos)
+    loadDeliveryData(produtos, filtroSemana)
       .then(d => { setDados(d); setLoading(false); })
       .catch(() => setLoading(false));
-  }, [produtos]);
+  }, [produtos, filtroSemana]);
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">

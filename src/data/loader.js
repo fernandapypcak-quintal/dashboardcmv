@@ -84,9 +84,11 @@ function parseHistProd(r) {
 }
 
 // ── Fetch com fallback ─────────────────────────────────────
-async function fetchTipo(tipo) {
+export async function fetchTipo(tipo, params = {}) {
   try {
-    const res = await fetch(`${APPS_SCRIPT_URL}?tipo=${tipo}`);
+    const qs = Object.entries(params).map(([k,v]) => `${k}=${encodeURIComponent(v)}`).join('&');
+    const url = `${APPS_SCRIPT_URL}?tipo=${tipo}${qs ? '&' + qs : ''}`;
+    const res = await fetch(url);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.json();
   } catch (e) {

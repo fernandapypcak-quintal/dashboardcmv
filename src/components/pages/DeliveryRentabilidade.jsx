@@ -9,7 +9,7 @@ const brlK = v => v >= 1000 ? `R$ ${(v/1000).toFixed(1)}k` : `R$ ${(v||0).toFixe
 const pct  = v => `${((v||0)*100).toFixed(1)}%`;
 
 export default function DeliveryRentabilidade() {
-  const { produtos, histComp } = useCMV();
+  const { produtos, histComp, filtroSemana } = useCMV();
   const [dados,      setDados]      = useState(null);
   const [loading,    setLoading]    = useState(true);
   const [busca,      setBusca]      = useState('');
@@ -23,10 +23,10 @@ export default function DeliveryRentabilidade() {
   const [embalagensCustom, setEmbalagensCustom] = useState({}); // sku → valor
 
   useEffect(() => {
-    loadDeliveryData(produtos)
+    loadDeliveryData(produtos, filtroSemana)
       .then(d => { setDados(d); setLoading(false); })
       .catch(() => setLoading(false));
-  }, [produtos]);
+  }, [produtos, filtroSemana]);
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">

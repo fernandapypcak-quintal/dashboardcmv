@@ -5,22 +5,12 @@
 // Preço de venda: unitValue da ZIG (preço real praticado no iFood)
 
 import { APPS_SCRIPT_URL } from './config';
+import { fetchTipo } from './loader';
 
 const n = v => parseFloat(String(v ?? '').replace(',', '.')) || 0;
 const s = v => String(v ?? '').trim();
 
-async function fetchTipo(tipo) {
-  try {
-    const res = await fetch(`${APPS_SCRIPT_URL}?tipo=${tipo}`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return await res.json();
-  } catch (e) {
-    console.warn(`[delivery] Falha ao buscar ${tipo}:`, e.message);
-    return {};
-  }
-}
-
-export async function loadDeliveryData(fichas = []) {
+export async function loadDeliveryData(fichas = [], semana = null) {
   // Mapa SKU ZIG → custo da ficha técnica principal
   const custoPorSkuFicha = {};
   fichas.forEach(f => {
@@ -36,7 +26,8 @@ export async function loadDeliveryData(fichas = []) {
   });
 
   // Busca vendas delivery — já vêm com custoMapa do mapa_delivery
-  const res    = await fetchTipo('vendas_delivery');
+  const params = semana && semana !== 'atual' && semana !== 'anterior' ? { semana } : {};
+  const res    = await fetchTipo('vendas_delivery', params);
   const vendas = (res.vendas ?? []).filter(r => r.productSku && r.count > 0);
 
   // Agrupa por SKU
