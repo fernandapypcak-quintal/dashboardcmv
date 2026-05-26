@@ -127,6 +127,17 @@ export default function Rentabilidade() {
                 <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wide">{sub}</p>
               </div>
               <table className="w-full text-[13px]">
+                <thead>
+                  <tr className="border-b border-surface-border">
+                    <th className="px-5 py-2 text-[10px] font-semibold text-zinc-400 uppercase tracking-wide text-left">Produto</th>
+                    <th className="px-4 py-2 text-[10px] font-semibold text-zinc-400 uppercase tracking-wide text-right">Preço Venda</th>
+                    <th className="px-4 py-2 text-[10px] font-semibold text-zinc-400 uppercase tracking-wide text-right">Custo</th>
+                    <th className="px-4 py-2 text-[10px] font-semibold text-zinc-400 uppercase tracking-wide text-right">CMV%</th>
+                    <th className="px-4 py-2 text-[10px] font-semibold text-zinc-400 uppercase tracking-wide text-right">Margem</th>
+                    <th className="px-4 py-2 text-[10px] font-semibold text-zinc-400 uppercase tracking-wide text-right">Status</th>
+                    <th className="px-4 py-2 text-[10px] font-semibold text-zinc-400 uppercase tracking-wide text-right">Sugestão</th>
+                  </tr>
+                </thead>
                 <tbody>
                   {itens.map(item => (
                     <tr key={item.codPa}
