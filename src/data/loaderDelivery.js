@@ -1,11 +1,8 @@
 // ── LOADER DELIVERY ────────────────────────────────────────
-// Fonte de dados:
-//   Custo      → ficha_tecnica (mesma do salão, cruzada por SKU ZIG)
-//   Preço venda → ZIG (lojas "Delivery *" já têm preço delivery)
-//   Volume     → ZIG saida-produtos canal DELIVERY
-//
-// Combos: itens dentro do combo vêm via campo `additions` da ZIG
-// e cruzam com a ficha técnica pelo SKU de cada item.
+// Custo vem de duas fontes (em ordem de prioridade):
+//   1. Ficha técnica principal (cruzamento por SKU ZIG)
+//   2. mapa_delivery da planilha (custo calculado na planilha de delivery)
+// Preço de venda: unitValue da ZIG (preço real praticado no iFood)
 
 import { APPS_SCRIPT_URL } from './config';
 
@@ -24,62 +21,68 @@ async function fetchTipo(tipo) {
 }
 
 export async function loadDeliveryData(fichas = []) {
-  // fichas já vem do useCMV — não busca de novo
-  // Monta mapa SKU ZIG → custo unitário da ficha técnica
-  const custoPorSku = {};
+  // Mapa SKU ZIG → custo da ficha técnica principal
+  const custoPorSkuFicha = {};
   fichas.forEach(f => {
-    if (f.skuZig && !custoPorSku[f.skuZig]) {
-      custoPorSku[f.skuZig] = {
+    if (f.skuZig && !custoPorSkuFicha[f.skuZig]) {
+      custoPorSkuFicha[f.skuZig] = {
         custo:        f.custoIngr,
         nomePa:       f.nomePa,
         categoria:    f.categoria,
         subcategoria: f.subcategoria,
+        fonte:        'ficha_tecnica',
       };
     }
   });
 
-  // Busca vendas do canal delivery da aba zig_vendas
-  const res = await fetchTipo('vendas_delivery');
+  // Busca vendas delivery — já vêm com custoMapa do mapa_delivery
+  const res    = await fetchTipo('vendas_delivery');
   const vendas = (res.vendas ?? []).filter(r => r.productSku && r.count > 0);
 
-  // Agrupa por SKU e calcula CMV com custo da ficha técnica
+  // Agrupa por SKU
   const porProduto = new Map();
 
   vendas.forEach(v => {
-    const sku    = s(v.productSku);
-    const preco  = n(v.unitValue);
-    const desc   = n(v.discountValue);
-    const qtd    = n(v.count);
-    const ficha  = custoPorSku[sku];
-    const custo  = ficha ? ficha.custo : 0;
+    const sku     = s(v.productSku);
+    const preco   = n(v.unitValue);
+    const desc    = n(v.discountValue);
+    const qtd     = n(v.count);
     const receita = Math.max(0, preco - desc) * qtd;
+
+    // Prioridade de custo: ficha técnica > mapa_delivery
+    const fichaCross = custoPorSkuFicha[sku];
+    const custo      = fichaCross ? fichaCross.custo : n(v.custoMapa);
+    const temFicha   = !!fichaCross || !!n(v.custoMapa);
+    const fonte      = fichaCross ? 'ficha_tecnica' : (n(v.custoMapa) > 0 ? 'mapa_delivery' : 'sem_custo');
+
     const custoTotal = custo * qtd;
 
     if (!porProduto.has(sku)) {
       porProduto.set(sku, {
         skuZig:       sku,
-        nomePa:       ficha?.nomePa       || s(v.productName),
-        categoria:    ficha?.categoria    || s(v.productCategory),
-        subcategoria: ficha?.subcategoria || '',
+        nomePa:       fichaCross?.nomePa    || s(v.productName),
+        categoria:    fichaCross?.categoria || s(v.productCategory),
+        subcategoria: fichaCross?.subcategoria || '',
         tipo:         s(v.tipo) || 'AVULSO',
         qtdTotal:     0,
         receitaTotal: 0,
         custoTotal:   0,
         precoMedio:   0,
         custoUnit:    custo,
-        temFicha:     !!ficha,
+        temFicha,
+        fonte,
       });
     }
 
     const p = porProduto.get(sku);
-    p.qtdTotal    += qtd;
+    p.qtdTotal     += qtd;
     p.receitaTotal += receita;
     p.custoTotal   += custoTotal;
   });
 
-  // Calcula CMV real e preço médio de venda
+  // Calcula CMV e métricas
   porProduto.forEach(p => {
-    p.cmvReal   = p.receitaTotal > 0 ? p.custoTotal / p.receitaTotal : 0;
+    p.cmvReal    = p.receitaTotal > 0 ? p.custoTotal / p.receitaTotal : 0;
     p.precoMedio = p.qtdTotal > 0 ? p.receitaTotal / p.qtdTotal : 0;
     p.margemPct  = p.receitaTotal > 0 ? (p.receitaTotal - p.custoTotal) / p.receitaTotal : 0;
   });
@@ -87,17 +90,21 @@ export async function loadDeliveryData(fichas = []) {
   const lista = [...porProduto.values()]
     .sort((a, b) => b.custoTotal - a.custoTotal);
 
-  // KPIs consolidados do delivery
-  // CMV calculado apenas sobre produtos COM ficha técnica
-  const comFicha     = lista.filter(r => r.temFicha);
-  const receitaTotal = lista.reduce((s, r) => s + r.receitaTotal, 0);
-  const custoTotal   = lista.reduce((s, r) => s + r.custoTotal, 0);
-  const receitaComFicha = comFicha.reduce((s, r) => s + r.receitaTotal, 0);
-  const custoComFicha   = comFicha.reduce((s, r) => s + r.custoTotal, 0);
-  const cmvGeral     = receitaComFicha > 0 ? custoComFicha / receitaComFicha : 0;
-  const semFicha     = lista.filter(r => !r.temFicha).length;
+  // KPIs — só produtos com custo conhecido
+  const comFicha       = lista.filter(r => r.temFicha);
+  const semFicha       = lista.filter(r => !r.temFicha).length;
+  const receitaTotal   = lista.reduce((s, r) => s + r.receitaTotal, 0);
+  const custoTotal     = lista.reduce((s, r) => s + r.custoTotal, 0);
+  const recComFicha    = comFicha.reduce((s, r) => s + r.receitaTotal, 0);
+  const custoComFicha  = comFicha.reduce((s, r) => s + r.custoTotal, 0);
+  const cmvGeral       = recComFicha > 0 ? custoComFicha / recComFicha : 0;
 
-  console.log(`[Delivery] ${vendas.length} vendas | ${lista.length} produtos | CMV ${(cmvGeral*100).toFixed(1)}% | sem ficha: ${semFicha}`);
+  console.log(`[Delivery] ${vendas.length} vendas | ${lista.length} produtos | com custo: ${comFicha.length} | sem custo: ${semFicha} | CMV: ${(cmvGeral*100).toFixed(1)}%`);
 
-  return { vendas, porProduto: lista, receitaTotal, custoTotal, receitaComFicha, custoComFicha, cmvGeral, semFicha };
+  return {
+    vendas, porProduto: lista,
+    receitaTotal, custoTotal,
+    recComFicha, custoComFicha, cmvGeral,
+    semFicha,
+  };
 }
