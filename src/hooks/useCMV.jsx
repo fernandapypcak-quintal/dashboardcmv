@@ -98,7 +98,7 @@ export function CMVProvider({ children }) {
   // ── Filtros aplicados ──────────────────────────────────
   const produtosFiltrados = useMemo(() =>
     produtosUnicos.filter(r =>
-      (filtroCat === 'Todas' || r.categoria === filtroCat)
+      (filtroCat === 'Todas' || (Array.isArray(filtroCat) ? filtroCat.includes(r.categoria) : r.categoria === filtroCat))
     ),
   [produtosUnicos, filtroCat]);
 
@@ -106,7 +106,7 @@ export function CMVProvider({ children }) {
     historico.filter(r =>
       (filtroLoja  === 'Todas' || r.loja  === filtroLoja) &&
       (filtroCanal === 'Todos' || r.canal === filtroCanal) &&
-      (filtroCat   === 'Todas' || r.categoria === filtroCat)
+      (filtroCat === 'Todas' || (Array.isArray(filtroCat) ? filtroCat.includes(r.categoria) : r.categoria === filtroCat))
     ),
   [historico, filtroLoja, filtroCanal, filtroCat]);
 
@@ -223,7 +223,7 @@ export function CMVProvider({ children }) {
     const dadosAnt = histProd.filter(r => r.semanaISO === semAnt);
 
     return dadosAt
-      .filter(r => (filtroCat === 'Todas' || r.categoria === filtroCat))
+      .filter(r => (filtroCat === 'Todas' || (Array.isArray(filtroCat) ? filtroCat.includes(r.categoria) : r.categoria === filtroCat)))
       .map(r => {
         const ant = dadosAnt.find(a => a.codPa === r.codPa);
         return {
@@ -293,7 +293,7 @@ export function CMVProvider({ children }) {
     const dadosAnt = histComp.filter(r => r.semanaISO === semAnt);
 
     return dadosAt
-      .filter(r => (filtroCat === 'Todas' || r.categoria === filtroCat))
+      .filter(r => (filtroCat === 'Todas' || (Array.isArray(filtroCat) ? filtroCat.includes(r.categoria) : r.categoria === filtroCat)))
       .map(r => {
         const ant = dadosAnt.find(a => a.codPa === r.codPa && a.codComponente === r.codComponente);
         const deltaCusto = ant ? r.custoUnit - ant.custoUnit : 0;
