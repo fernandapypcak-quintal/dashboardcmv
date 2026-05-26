@@ -92,21 +92,27 @@ export function CMVProvider({ children }) {
       });
     });
     // Recalcula custo total como soma dos ingredientes
-    // Exceção: produto com 1 único ingrediente usa custo_unit (evita erro de pacote vs unitário)
+    // Regra: se und=UN e qtd>1, o custo_ingr é do pacote → divide pela qtd para ter custo unitário
+    // Exemplo: Bovino In Natura tem qtd=7 UN → custo_ingr=30,96 → custo real = 30,96/7 = 4,42
+    // Para KG/LT com qtd fracionada, o custo_ingr já está correto (ex: 0,1 KG × 11,33 = 1,13)
     map.forEach(p => {
-      if (p.ingredientes.length === 1) {
-        // Produto com ingrediente único — custo é unitário (ex: Bovino In Natura = 1 espeto)
-        p.custoIngr = p.ingredientes[0].custoUnit;
-      } else {
-        // Produto composto — soma todos os ingredientes normalmente
-        p.custoIngr = p.ingredientes.reduce((s,i) => s + i.custoIngr, 0);
-      }
+      const custoAjustado = p.ingredientes.reduce((s, ing) => {
+        const und = String(ing.und || '').toUpperCase().trim();
+        const qtd = ing.qtd || 1;
+        const custo = ing.custoIngr || 0;
+        // Se unidade é UN e qtd > 1, divide para obter custo por unidade
+        if (und === 'UN' && qtd > 1) {
+          return s + (custo / qtd);
+        }
+        return s + custo;
+      }, 0);
+      p.custoIngr = custoAjustado;
       // Recalcula CMV e margem com custo correto
       if (p.precoVenda > 0) {
-        p.cmvPct          = p.custoIngr / p.precoVenda;
-        p.margemContribR  = p.precoVenda - p.custoIngr;
+        p.cmvPct           = p.custoIngr / p.precoVenda;
+        p.margemContribR   = p.precoVenda - p.custoIngr;
         p.margemContribPct = (p.precoVenda - p.custoIngr) / p.precoVenda;
-        p.precoSugerido   = p.custoIngr > 0 ? p.custoIngr / 0.30 : p.precoVenda;
+        p.precoSugerido    = p.custoIngr > 0 ? p.custoIngr / 0.30 : p.precoVenda;
       }
     });
     return [...map.values()];
