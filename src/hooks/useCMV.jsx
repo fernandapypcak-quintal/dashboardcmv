@@ -174,7 +174,7 @@ export function CMVProvider({ children }) {
         temVenda:     venda.qtd > 0,
       };
     }).sort((a, b) => b.custoTotal - a.custoTotal);
-  }, [produtosUnicos, vendasFiltradas]);
+  }, [produtosFiltrados, vendasFiltradas]);
 
   // ── KPIs home ─────────────────────────────────────────
   const kpis = useMemo(() => {
