@@ -10,7 +10,7 @@ const brlK = v => v >= 1000 ? `R$ ${(v/1000).toFixed(1)}k` : `R$ ${(v||0).toFixe
 const pct  = v => `${((v||0)*100).toFixed(1)}%`;
 
 export default function DeliveryRentabilidade() {
-  const { produtos, histComp, filtroSemana } = useCMV();
+  const { produtos, histComp, filtroSemana, parametros } = useCMV();
   const [dados,      setDados]      = useState(null);
   const [loading,    setLoading]    = useState(true);
   const [busca,      setBusca]      = useState('');
