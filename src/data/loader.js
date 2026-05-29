@@ -5,27 +5,20 @@ const s = v => String(v ?? '').trim();
 
 // ── Parser: ficha técnica ──────────────────────────────────
 function parseFicha(r) {
-  const codPa     = s(r.cod_pa);
-  const custoIngr = n(r.custo_ingr);
-  const precoVenda = n(r.preco_venda);
-  const cmvPct    = n(r.cmv_pct);
+  // Só parseia campos brutos — cálculos (CMV, margem) feitos no hook após agrupar ingredientes
   return {
-    codPa,
-    skuZig:           s(r.sku_zig),
-    nomePa:           s(r.nome_pa),
-    categoria:        s(r.categoria),
-    subcategoria:     s(r.subcategoria),
-    codComponente:    s(r.cod_componente),
-    descComponente:   s(r.desc_componente),
-    qtd:              n(r.qtd),
-    und:              s(r.und),
-    custoUnit:        n(r.custo_unit),
-    custoIngr,
-    precoVenda,
-    cmvPct,
-    margemContribR:   precoVenda > 0 ? precoVenda - custoIngr : 0,
-    margemContribPct: precoVenda > 0 ? (precoVenda - custoIngr) / precoVenda : 0,
-    precoSugerido:    custoIngr > 0 ? custoIngr / 0.30 : 0,
+    codPa:          s(r.cod_pa),
+    skuZig:         s(r.sku_zig),
+    nomePa:         s(r.nome_pa),
+    categoria:      s(r.categoria),
+    subcategoria:   s(r.subcategoria),
+    codComponente:  s(r.cod_componente),
+    descComponente: s(r.desc_componente),
+    qtd:            n(r.qtd),
+    und:            s(r.und),
+    custoUnit:      n(r.custo_unit),
+    custoIngr:      n(r.custo_ingr),
+    precoVenda:     n(r.preco_venda),
   };
 }
 
