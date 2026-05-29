@@ -196,6 +196,7 @@ export function CMVProvider({ children }) {
   const kpis = useMemo(() => {
     // CMV atual vem direto das fichas técnicas (fonte mais confiável)
     const cmvAtual = avg(produtosFiltrados.map(r => r.cmvPct));
+    console.log('[DEBUG kpis] produtosFiltrados:', produtosFiltrados.length, '| cmvAtual:', (cmvAtual*100).toFixed(1)+'%', '| primeiro cmvPct:', produtosFiltrados[0]?.cmvPct);
 
     // Delta vem do histórico se disponível
     const semanas  = [...new Set(historico.map(r => r.semanaISO))].sort();
