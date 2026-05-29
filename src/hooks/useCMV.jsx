@@ -75,10 +75,10 @@ export function CMVProvider({ children }) {
           subcategoria: r.subcategoria,
           precoVenda:   r.precoVenda,
           custoIngr:    0,
-          cmvPct:       r.cmvPct,
-          margemContribR:   r.margemContribR,
-          margemContribPct: r.margemContribPct,
-          precoSugerido:    r.precoSugerido,
+          cmvPct:       0, // calculado após somar ingredientes
+          margemContribR:   0,
+          margemContribPct: 0,
+          precoSugerido:    0,
           ingredientes: [],
         });
       }
