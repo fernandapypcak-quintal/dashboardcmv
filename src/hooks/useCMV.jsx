@@ -92,7 +92,6 @@ export function CMVProvider({ children }) {
       });
     });
     // Recalcula custo total: soma simples de custoIngr de cada ingrediente
-    // custoIngr = custo_unit × qty — sem ajustes (igual ao sistema de inventário)
     map.forEach(p => {
       p.custoIngr = p.ingredientes.reduce((s, ing) => s + (ing.custoIngr || 0), 0);
       if (p.precoVenda > 0) {
@@ -102,6 +101,14 @@ export function CMVProvider({ children }) {
         p.precoSugerido    = p.custoIngr > 0 ? p.custoIngr / 0.30 : p.precoVenda;
       }
     });
+    // DEBUG — remover depois
+    const amostra = [...map.values()].filter(p => p.nomePa.includes('Abobrinha'));
+    if (amostra.length > 0) {
+      console.log('[DEBUG Abobrinha] custoIngr:', amostra[0].custoIngr, '| precoVenda:', amostra[0].precoVenda, '| cmvPct:', (amostra[0].cmvPct*100).toFixed(1)+'%');
+      console.log('[DEBUG Abobrinha] ingredientes:', JSON.stringify(amostra[0].ingredientes));
+    }
+    const cmvMediaDebug = [...map.values()].filter(p=>p.precoVenda>0).map(p=>p.cmvPct);
+    console.log('[DEBUG CMV médio]', (cmvMediaDebug.reduce((s,v)=>s+v,0)/cmvMediaDebug.length*100).toFixed(1)+'% de', cmvMediaDebug.length, 'produtos');
     return [...map.values()];
   }, [fichas]);
 
