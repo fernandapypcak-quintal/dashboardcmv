@@ -195,8 +195,9 @@ export function CMVProvider({ children }) {
   // ── KPIs home ─────────────────────────────────────────
   const kpis = useMemo(() => {
     // CMV atual vem direto das fichas técnicas (fonte mais confiável)
-    const cmvAtual = avg(produtosFiltrados.map(r => r.cmvPct));
-    console.log('[DEBUG kpis] produtosFiltrados:', produtosFiltrados.length, '| cmvAtual:', (cmvAtual*100).toFixed(1)+'%', '| primeiro cmvPct:', produtosFiltrados[0]?.cmvPct);
+    // Só produtos com preço de venda — evita zeros puxarem a média para baixo
+    const comPreco  = produtosFiltrados.filter(r => r.precoVenda > 0);
+    const cmvAtual  = avg(comPreco.map(r => r.cmvPct));
 
     // Delta vem do histórico se disponível
     const semanas  = [...new Set(historico.map(r => r.semanaISO))].sort();
@@ -208,10 +209,10 @@ export function CMVProvider({ children }) {
       : cmvAtual;
     const deltaCMV = cmvAtual - cmvAnt;
 
-    const criticos = produtosFiltrados.filter(r => r.cmvPct > 1).length;
-    const atencao  = produtosFiltrados.filter(r => r.cmvPct >= META_CMV && r.cmvPct < 1).length;
-    const okCount  = produtosFiltrados.filter(r => r.cmvPct < META_CMV).length;
-    const margem   = avg(produtosFiltrados.map(r => r.margemContribPct));
+    const criticos = comPreco.filter(r => r.cmvPct > 1).length;
+    const atencao  = comPreco.filter(r => r.cmvPct >= META_CMV && r.cmvPct < 1).length;
+    const okCount  = comPreco.filter(r => r.cmvPct < META_CMV).length;
+    const margem   = avg(comPreco.map(r => r.margemContribPct));
     const totalDesp = desperdicioFiltrado.reduce((s, r) => s + r.custoTotal, 0);
 
     return {
