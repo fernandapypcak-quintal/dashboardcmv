@@ -91,23 +91,10 @@ export function CMVProvider({ children }) {
         custoIngr:      r.custoIngr,
       });
     });
-    // Recalcula custo total como soma dos ingredientes
-    // Regra: se und=UN e qtd>1, o custo_ingr é do pacote → divide pela qtd para ter custo unitário
-    // Exemplo: Bovino In Natura tem qtd=7 UN → custo_ingr=30,96 → custo real = 30,96/7 = 4,42
-    // Para KG/LT com qtd fracionada, o custo_ingr já está correto (ex: 0,1 KG × 11,33 = 1,13)
+    // Recalcula custo total: soma simples de custoIngr de cada ingrediente
+    // custoIngr = custo_unit × qty — sem ajustes (igual ao sistema de inventário)
     map.forEach(p => {
-      const custoAjustado = p.ingredientes.reduce((s, ing) => {
-        const und = String(ing.und || '').toUpperCase().trim();
-        const qtd = ing.qtd || 1;
-        const custo = ing.custoIngr || 0;
-        // Se unidade é UN e qtd > 1, divide para obter custo por unidade
-        if (und === 'UN' && qtd > 1) {
-          return s + (custo / qtd);
-        }
-        return s + custo;
-      }, 0);
-      p.custoIngr = custoAjustado;
-      // Recalcula CMV e margem com custo correto
+      p.custoIngr = p.ingredientes.reduce((s, ing) => s + (ing.custoIngr || 0), 0);
       if (p.precoVenda > 0) {
         p.cmvPct           = p.custoIngr / p.precoVenda;
         p.margemContribR   = p.precoVenda - p.custoIngr;
