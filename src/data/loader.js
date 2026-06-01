@@ -124,6 +124,9 @@ export async function loadCMVData() {
     cmvPct:       parseFloat(r.cmv_pct)     || 0,
   }));
 
+  const fichasComCusto = fichas.filter(r => r.custoIngr > 0);
+  const fichasSemCusto = fichas.filter(r => r.custoIngr === 0);
+  console.log(`[Loader] fichas com custo: ${fichasComCusto.length} | sem custo: ${fichasSemCusto.length} | exemplo sem custo:`, fichasSemCusto[0]);
   console.log(`[CMV] fichas=${fichas.length} desperdício=${desperdicio.length} vendas=${vendas.length} history=${history.length}`);
   const historicoIngredientes = (resHistIng.historico_ingredientes ?? []).map(r => ({
     data:           String(r.data           || '').slice(0,10),

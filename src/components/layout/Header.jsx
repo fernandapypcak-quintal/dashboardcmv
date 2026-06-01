@@ -86,7 +86,11 @@ export default function Header({ activePage }) {
                 value={filtroSemana}
                 onChange={setFiltroSemana}
                 opts={['atual', 'anterior', ...(semanasDisponiveis || [])]}
-                labels={{ atual: 'Semana atual', anterior: 'Semana passada' }}
+                labels={Object.fromEntries([
+                  ['atual', 'Semana atual'],
+                  ['anterior', 'Semana passada'],
+                  ...(semanasDisponiveis || []).map((s, i) => [s, s.replace(/^\d{4}-W/, 'Sem. ')])
+                ])}
               />
             )}
           </div>

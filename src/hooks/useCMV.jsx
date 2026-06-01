@@ -90,6 +90,8 @@ export function CMVProvider({ children }) {
 
     // Debug
     const comPrecoDebug = [...map.values()].filter(p => p.precoVenda > 0 && p.cardapio === 'Sim');
+    const zeroCusto = [...map.values()].filter(p => p.precoVenda > 0 && p.custoIngr === 0);
+    if (zeroCusto.length > 0) console.log('[CMV] Produtos com custo zero:', zeroCusto.length, '| Exemplo:', zeroCusto[0]?.nomePa, '| custoIngr:', zeroCusto[0]?.custoIngr);
     const somaCustos = comPrecoDebug.reduce((s,p) => s + p.custoIngr, 0);
     const somaPrecos = comPrecoDebug.reduce((s,p) => s + p.precoVenda, 0);
     console.log(`[CMV] ${map.size} produtos | CMV ponderado: ${(somaCustos/somaPrecos*100).toFixed(1)}% | ${comPrecoDebug.length} no cardápio`);
