@@ -76,6 +76,7 @@ export function CMVProvider({ children }) {
           categoria:    r.categoria,
           subcategoria: r.subcategoria,
           precoVenda:   r.precoVenda,
+          cardapio:     r.cardapio || 'Sim',
           custoIngr:    0,
           cmvPct:       0, // calculado após somar ingredientes
           margemContribR:   0,
@@ -197,8 +198,8 @@ export function CMVProvider({ children }) {
   // ── KPIs home ─────────────────────────────────────────
   const kpis = useMemo(() => {
     // CMV atual vem direto das fichas técnicas (fonte mais confiável)
-    // Só produtos com preço de venda — evita zeros puxarem a média para baixo
-    const comPreco  = produtosFiltrados.filter(r => r.precoVenda > 0);
+    // Só produtos com preço de venda E no cardápio — igual ao sistema de inventário
+    const comPreco  = produtosFiltrados.filter(r => r.precoVenda > 0 && r.cardapio === 'Sim');
     const cmvAtual  = avg(comPreco.map(r => r.cmvPct));
 
     // Delta vem do histórico se disponível

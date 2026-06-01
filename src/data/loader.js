@@ -19,6 +19,7 @@ function parseFicha(r) {
     custoUnit:      n(r.custo_unit),
     custoIngr:      n(r.custo_ingr),
     precoVenda:     n(r.preco_venda),
+    cardapio:       s(r.cardapio) || 'Sim',
   };
 }
 
