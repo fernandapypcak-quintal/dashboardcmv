@@ -207,7 +207,7 @@ export function CMVProvider({ children }) {
   const volumePorProduto = useMemo(() => {
     const vendaMap = {};
     vendasFiltradas.forEach(v => {
-      const sku = v.productSku;
+      const sku = String(v.productSku || '').replace(/^0+/, '') || v.productSku;
       if (!sku) return;
       if (!vendaMap[sku]) vendaMap[sku] = { qtd: 0, receita: 0 };
       vendaMap[sku].qtd     += v.count || 0;
@@ -216,7 +216,8 @@ export function CMVProvider({ children }) {
     console.log(`[Volume] SKUs com venda: ${Object.keys(vendaMap).length} | Total itens: ${Object.values(vendaMap).reduce((s,v)=>s+v.qtd,0)}`);
 
     return produtosFiltrados.map(p => {
-      const venda      = vendaMap[p.skuZig] || { qtd: 0, receita: 0 };
+      const skuNorm     = String(p.skuZig || '').replace(/^0+/, '') || p.skuZig;
+      const venda      = vendaMap[skuNorm] || vendaMap[p.skuZig] || { qtd: 0, receita: 0 };
       const custoTotal = venda.qtd * p.custoIngr;
       const receitaReal = venda.receita;
       const cmvReal    = receitaReal > 0 ? custoTotal / receitaReal : p.cmvPct;
