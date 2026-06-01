@@ -225,6 +225,7 @@ export function CMVProvider({ children }) {
       const cmvReal    = receitaReal > 0 ? custoTotal / receitaReal : p.cmvPct;
       return {
         ...p,
+        cmvTeorico:  p.cmvPct,
         qtdVendida:  venda.qtd,
         receitaReal,
         custoTotal,
