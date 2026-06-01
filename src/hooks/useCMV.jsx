@@ -240,7 +240,6 @@ export function CMVProvider({ children }) {
       return { semana, cmv, data: snap.ts };
     });
   }, [history]);
-                     'julho','agosto','setembro','outubro','novembro','dezembro'];
 
 function avg(arr) { return arr.length ? arr.reduce((s,v)=>s+v,0)/arr.length : 0; }
 
