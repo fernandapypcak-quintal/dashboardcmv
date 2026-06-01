@@ -86,13 +86,14 @@ function parseVenda(r) {
 
 // ── Entry point ───────────────────────────────────────────────
 export async function loadCMVData() {
-  const [resFichas, resDesperdicio, resVendas, resParams, resHistory, resHistorico] = await Promise.all([
+  const [resFichas, resDesperdicio, resVendas, resParams, resHistory, resHistorico, resHistIng] = await Promise.all([
     fetchTipo('fichas'),
     fetchTipo('desperdicio'),
     fetchTipo('vendas'),
     fetchTipo('parametros'),
     fetchTipo('history'),
     fetchTipo('historico'),
+    fetchTipo('historico_ingredientes'),
   ]);
 
   const fichas = (resFichas.fichas ?? [])
@@ -124,5 +125,19 @@ export async function loadCMVData() {
   }));
 
   console.log(`[CMV] fichas=${fichas.length} desperdício=${desperdicio.length} vendas=${vendas.length} history=${history.length}`);
-  return { fichas, desperdicio, vendas, parametros, history, historico };
+  const historicoIngredientes = (resHistIng.historico_ingredientes ?? []).map(r => ({
+    data:           String(r.data           || '').slice(0,10),
+    codPa:          String(r.cod_pa         || ''),
+    nomePa:         String(r.nome_pa        || ''),
+    categoria:      String(r.categoria      || ''),
+    catContabil:    String(r.cat_contabil   || ''),
+    codComponente:  String(r.cod_componente || ''),
+    descComponente: String(r.desc_componente|| ''),
+    qtd:            parseFloat(r.qtd)        || 0,
+    und:            String(r.und            || ''),
+    custoUnit:      parseFloat(r.custo_unit) || 0,
+    custoIngr:      parseFloat(r.custo_ingr) || 0,
+  }));
+
+  return { fichas, desperdicio, vendas, parametros, history, historico, historicoIngredientes };
 }

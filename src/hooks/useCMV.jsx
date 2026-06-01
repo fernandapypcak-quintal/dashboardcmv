@@ -16,6 +16,7 @@ export function CMVProvider({ children }) {
   const [parametros,  setParametros]  = useState({ taxa_ifood: 24.8, embalagem_padrao: 3.0 });
   const [history,     setHistory]     = useState([]);
   const [historico,   setHistorico]   = useState([]);
+  const [histIng,     setHistIng]     = useState([]);
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState(null);
 
@@ -29,13 +30,14 @@ export function CMVProvider({ children }) {
 
   useEffect(() => {
     loadCMVData()
-      .then(({ fichas, desperdicio, vendas, parametros, history, historico }) => {
+      .then(({ fichas, desperdicio, vendas, parametros, history, historico, historicoIngredientes }) => {
         setFichas(fichas || []);
         setDesperdicio(desperdicio || []);
         setVendas(vendas || []);
         setParametros(parametros || { taxa_ifood: 24.8, embalagem_padrao: 3.0 });
         setHistory(history || []);
         setHistorico(historico || []);
+        setHistIng(historicoIngredientes || []);
         setLoading(false);
       })
       .catch(e => { setError(e.message); setLoading(false); });
@@ -303,6 +305,7 @@ export function CMVProvider({ children }) {
       vendas: vendasFiltradas,
       history,
       historico,
+      histIng,
       parametros,
       // Derivados
       kpis, evolucaoCMV, volumePorProduto,

@@ -9,7 +9,7 @@ const pct = v => `${((v||0)*100).toFixed(1)}%`;
 const LIMITE_VARIACAO = 5; // % de variação para destacar
 
 export default function PainelIngredientes({ produto, onClose }) {
-  const { history = [] } = useCMV();
+  const { history = [], histIng = [] } = useCMV();
   if (!produto) return null;
 
   const status = produto.cmvPct >= 0.80 ? 'Crítico' : produto.cmvPct >= 0.35 ? 'Atenção' : 'OK';
@@ -21,49 +21,63 @@ export default function PainelIngredientes({ produto, onClose }) {
 
   const ingredientes = produto.ingredientes || [];
 
-  // Busca variação de cada ingrediente no history.json
+  // Busca variação de cada ingrediente no historico_ingredientes
   const variacaoInsumos = useMemo(() => {
-    if (!history.length) return {};
-    const snaps = [...history].sort((a, b) => new Date(a.ts) - new Date(b.ts));
-    const snapAtual = snaps[snaps.length - 1];
-    const snapAnt   = snaps[snaps.length - 2];
-    if (!snapAtual || !snapAnt) return {};
+    if (!histIng.length || !produto.codPa) return {};
+    // Datas disponíveis para este produto
+    const datas = [...new Set(
+      histIng.filter(r => r.codPa === produto.codPa).map(r => r.data)
+    )].sort();
+    if (datas.length < 2) return {};
 
-    const insAtual = snapAtual.snap?.insumos || {};
-    const insAnt   = snapAnt.snap?.insumos   || {};
+    const dataAtual = datas[datas.length - 1];
+    const dataAnt   = datas[datas.length - 2];
+
+    const ingAtual = {};
+    const ingAnt   = {};
+    histIng.filter(r => r.codPa === produto.codPa && r.data === dataAtual)
+      .forEach(r => { ingAtual[r.codComponente] = r; });
+    histIng.filter(r => r.codPa === produto.codPa && r.data === dataAnt)
+      .forEach(r => { ingAnt[r.codComponente] = r; });
+
     const result = {};
-
     ingredientes.forEach(ing => {
-      const cod = ing.codComponente;
-      const atual = insAtual[cod];
-      const ant   = insAnt[cod];
+      const cod  = ing.codComponente;
+      const atual = ingAtual[cod];
+      const ant   = ingAnt[cod];
       if (!atual || !ant) return;
-      const delta    = atual.custo - ant.custo;
-      const deltaPct = ant.custo > 0 ? (delta / ant.custo * 100) : 0;
+      const delta    = atual.custoUnit - ant.custoUnit;
+      const deltaPct = ant.custoUnit > 0 ? (delta / ant.custoUnit * 100) : 0;
       if (Math.abs(deltaPct) >= LIMITE_VARIACAO) {
-        result[cod] = { custoAnt: ant.custo, custoAtual: atual.custo, delta, deltaPct };
+        result[cod] = {
+          custoAnt:   ant.custoUnit,
+          custoAtual: atual.custoUnit,
+          delta,
+          deltaPct,
+        };
       }
     });
     return result;
-  }, [history, ingredientes]);
+  }, [histIng, ingredientes, produto.codPa]);
 
-  // Evolução do CMV do produto no history
+  // Evolução do CMV do produto no historico
   const evolucaoCMV = useMemo(() => {
-    if (!history.length) return [];
-    return [...history]
-      .sort((a, b) => new Date(a.ts) - new Date(b.ts))
-      .map(snap => {
-        const fichas = Object.values(snap.snap?.fichas || {});
-        const ficha  = fichas.find(f => f.codPA === produto.codPa);
-        if (!ficha) return null;
-        const d = new Date(snap.ts);
-        return {
-          data: `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`,
-          cmv:  parseFloat((ficha.cmv || 0).toFixed(1)),
-        };
-      })
-      .filter(Boolean);
-  }, [history, produto.codPa]);
+    if (!histIng.length || !produto.codPa) return [];
+    // Agrupa por data e calcula custo total do produto
+    const porData = {};
+    histIng.filter(r => r.codPa === produto.codPa).forEach(r => {
+      if (!porData[r.data]) porData[r.data] = 0;
+      porData[r.data] += r.custoIngr || 0;
+    });
+    return Object.entries(porData)
+      .sort(([a],[b]) => a.localeCompare(b))
+      .map(([data, custo]) => ({
+        data: data.slice(5), // MM-DD
+        cmv:  produto.precoVenda > 0
+          ? parseFloat((custo / produto.precoVenda * 100).toFixed(1))
+          : 0,
+      }));
+  }, [histIng, produto.codPa, produto.precoVenda]);
 
   const temVariacao    = Object.keys(variacaoInsumos).length > 0;
   const temEvolucao    = evolucaoCMV.length >= 2;
