@@ -200,7 +200,10 @@ export function CMVProvider({ children }) {
     // CMV atual vem direto das fichas técnicas (fonte mais confiável)
     // Só produtos com preço de venda E no cardápio — igual ao sistema de inventário
     const comPreco  = produtosFiltrados.filter(r => r.precoVenda > 0 && r.cardapio === 'Sim');
-    const cmvAtual  = avg(comPreco.map(r => r.cmvPct));
+    // CMV médio teórico = ponderado: soma(custos) / soma(preços)
+    const somaCustos = comPreco.reduce((s, r) => s + r.custoIngr, 0);
+    const somaPrecos = comPreco.reduce((s, r) => s + r.precoVenda, 0);
+    const cmvAtual   = somaPrecos > 0 ? somaCustos / somaPrecos : 0;
 
     // Delta vem do histórico se disponível
     const semanas  = [...new Set(historico.map(r => r.semanaISO))].sort();
