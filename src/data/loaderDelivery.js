@@ -24,18 +24,19 @@ export async function loadDeliveryData(fichas = [], semana = null) {
   // Busca vendas delivery
   const res    = await fetchTipo('vendas_delivery');
   console.log('[Delivery raw] res keys:', Object.keys(res || {}), '| vendas type:', typeof res?.vendas, '| length:', res?.vendas?.length);
-  const todasVendas = (res.vendas ?? []).filter(r => r.productSku && r.count > 0);
-  console.log('[Delivery raw] total vendas filtradas:', todasVendas.length, '| exemplo:', JSON.stringify(todasVendas[0])?.slice(0,200));
+  const todasVendas = (res.vendas ?? []).filter(r => (r.product_sku || r.productSku) && (r.count > 0));
+  console.log('[Delivery raw] total vendas filtradas:', todasVendas.length, '| exemplo:', JSON.stringify(todasVendas[0])?.slice(0,150));
 
   // Determina semana a usar — igual ao salão
   const semsDisp = [...new Set(todasVendas.map(v => String(v.semana_iso || v.semanaISO || '').trim()).filter(Boolean))].sort();
+  console.log('[Delivery raw] semanas:', semsDisp);
   console.log('[Delivery raw] semanas encontradas:', semsDisp);
   const semAtual = semsDisp[semsDisp.length - 1] || '';
   const semAnt   = semsDisp[semsDisp.length - 2] || semAtual;
   const semTarget = semana === 'anterior' ? semAnt : semana && semana !== 'atual' ? semana : semAtual;
 
   const vendas = semTarget
-    ? todasVendas.filter(v => String(v.semana_iso || v.semanaISO || '').trim() === semTarget)
+    ? todasVendas.filter(v => String(v.semana_iso || '').trim() === semTarget)
     : todasVendas;
 
   console.log('[Delivery] semana:', semTarget, '| vendas filtradas:', vendas.length, '| semanas disponíveis:', semsDisp.length);
@@ -43,9 +44,9 @@ export async function loadDeliveryData(fichas = [], semana = null) {
   // Agrupa por SKU
   const porProduto = new Map();
   vendas.forEach(v => {
-    const sku    = s(v.productSku);
-    const preco  = n(v.unitValue);
-    const desc   = n(v.discountValue);
+    const sku    = s(v.product_sku || v.productSku);
+    const preco  = n(v.unit_value  || v.unitValue);
+    const desc   = n(v.discount_value || v.discountValue);
     const qtd    = n(v.count);
     const ficha  = custoPorSku[sku];
     const custo  = ficha ? ficha.custo : 0;
