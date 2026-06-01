@@ -205,7 +205,7 @@ export default function Variacao() {
                               </span>
                             </td>
                             <td className="px-4 py-2.5 text-right font-mono text-zinc-400">{pct(r.cmvAnt)}</td>
-                            <td className={`px-4 py-2.5 text-right font-mono font-bold ${r.cmvAtual>0.35?'text-brand-crimson':r.cmvAtual>=0.30?'text-amber-700':'text-brand-olive'}`}>{pct(r.cmvAtual)}</td>
+                            <td className={`px-4 py-2.5 text-right font-mono font-bold ${r.cmvAtual>=0.80?'text-brand-crimson':r.cmvAtual>=0.35?'text-amber-700':'text-brand-olive'}`}>{pct(r.cmvAtual)}</td>
                             <td className="px-4 py-2.5 text-right"><DeltaBadge delta={r.deltaCMV}/></td>
                           </tr>
                         ))}

@@ -17,7 +17,7 @@ export default function Home({ onPageChange }) {
 
   const [painelProduto, setPainelProduto] = useState(null);
 
-  const criticos = produtos.filter(r => r.cmvPct > 1);
+  const criticos = produtos.filter(r => r.cmvPct >= 0.80);
   const cats     = margemPorCategoria.slice(0, 5).map(r => r.categoria);
   const grandTotalDesp = desperdicioByUnidade.reduce((s,r) => s + r.total, 0);
 
@@ -274,7 +274,7 @@ export default function Home({ onPageChange }) {
               <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wide mb-2 truncate">{r.categoria}</p>
               <div className="flex items-end justify-between">
                 <div>
-                  <p className={`text-[20px] font-bold leading-none ${r.cmvMedio>1?'text-brand-crimson':r.cmvMedio>=0.30?'text-amber-700':'text-brand-olive'}`}>
+                  <p className={`text-[20px] font-bold leading-none ${r.cmvMedio>=0.80?'text-brand-crimson':r.cmvMedio>=0.35?'text-amber-700':'text-brand-olive'}`}>
                     {pct(r.cmvMedio)}
                   </p>
                   <p className="text-[10px] text-zinc-400 mt-1">CMV médio</p>

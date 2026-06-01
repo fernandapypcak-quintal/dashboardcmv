@@ -19,9 +19,9 @@ export default function Rentabilidade() {
   produtos
     .filter(r => {
       if (!r.nomePa.toLowerCase().includes(busca.toLowerCase())) return false;
-      if (filtroCrit === 'Crítico') return r.cmvPct > 1;
-      if (filtroCrit === 'Atenção') return r.cmvPct >= 0.30 && r.cmvPct < 1;
-      if (filtroCrit === 'OK')      return r.cmvPct < 0.30;
+      if (filtroCrit === 'Crítico') return r.cmvPct >= 0.80;
+      if (filtroCrit === 'Atenção') return r.cmvPct >= 0.35 && r.cmvPct < 1;
+      if (filtroCrit === 'OK')      return r.cmvPct < 0.35;
       return true;
     })
     .forEach(r => {
@@ -86,7 +86,7 @@ export default function Rentabilidade() {
             <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wide mb-1.5 truncate">{r.categoria}</p>
             <div className="flex justify-between items-end">
               <div>
-                <p className={`text-[18px] font-bold ${r.cmvMedio>1?'text-brand-crimson':r.cmvMedio>=0.30?'text-amber-700':'text-brand-olive'}`}>
+                <p className={`text-[18px] font-bold ${r.cmvMedio>=0.80?'text-brand-crimson':r.cmvMedio>=0.35?'text-amber-700':'text-brand-olive'}`}>
                   {pct(r.cmvMedio)}
                 </p>
                 <p className="text-[11px] text-zinc-400">CMV médio</p>
@@ -154,7 +154,7 @@ export default function Rentabilidade() {
                       <td className="px-4 py-3 text-right text-zinc-500 font-mono text-[12px]">{brl(item.precoVenda)}</td>
                       <td className="px-4 py-3 text-right text-zinc-500 font-mono text-[12px]">{brl(item.custoIngr)}</td>
                       <td className={`px-4 py-3 text-right font-mono font-bold text-[13px]
-                        ${item.cmvPct>1?'text-brand-crimson':item.cmvPct>=0.30?'text-amber-700':'text-brand-olive'}`}>
+                        ${item.cmvPct>=0.80?'text-brand-crimson':item.cmvPct>=0.35?'text-amber-700':'text-brand-olive'}`}>
                         {pct(item.cmvPct)}
                       </td>
                       <td className={`px-4 py-3 text-right font-mono font-semibold text-[12px]

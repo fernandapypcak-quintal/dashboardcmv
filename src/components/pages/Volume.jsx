@@ -7,7 +7,7 @@ const pct  = v => `${((v||0)*100).toFixed(1)}%`;
 const CORES = ['#97A624','#D9B504','#8C1414','#2980b9','#e67e22','#9b59b6','#009e74'];
 
 export default function Volume() {
-  const { volumePorProduto, vendasFiltradas } = useCMV();
+  const { volumePorProduto, vendas: vendasFiltradas } = useCMV();
 
   const comVenda    = volumePorProduto.filter(r => r.temVenda);
   const semVenda    = volumePorProduto.filter(r => !r.temVenda);
@@ -113,7 +113,7 @@ export default function Volume() {
                         <div className="h-full rounded-full"
                           style={{width:`${(item.custoTotal/topCusto[0].custoTotal*100).toFixed(0)}%`, background: CORES[i%CORES.length]}}/>
                       </div>
-                      <span className={`text-[10px] font-mono shrink-0 ${item.cmvReal>1?'text-brand-crimson':item.cmvReal>=0.30?'text-amber-700':'text-brand-olive'}`}>
+                      <span className={`text-[10px] font-mono shrink-0 ${item.cmvReal>=0.80?'text-brand-crimson':item.cmvReal>=0.35?'text-amber-700':'text-brand-olive'}`}>
                         {pct(item.cmvReal)}
                       </span>
                     </div>
@@ -159,7 +159,7 @@ export default function Volume() {
                   <td className={`px-4 py-2.5 text-right font-mono ${item.cmvTeorico>1?'text-brand-crimson':item.cmvTeorico>=0.30?'text-amber-700':'text-brand-olive'}`}>
                     {pct(item.cmvTeorico)}
                   </td>
-                  <td className={`px-4 py-2.5 text-right font-mono font-semibold ${item.temVenda ? (item.cmvReal>1?'text-brand-crimson':item.cmvReal>=0.30?'text-amber-700':'text-brand-olive') : 'text-zinc-300'}`}>
+                  <td className={`px-4 py-2.5 text-right font-mono font-semibold ${item.temVenda ? (item.cmvReal>=0.80?'text-brand-crimson':item.cmvReal>=0.35?'text-amber-700':'text-brand-olive') : 'text-zinc-300'}`}>
                     {item.temVenda ? pct(item.cmvReal) : '—'}
                   </td>
                   <td className={`px-4 py-2.5 text-right font-mono ${item.temVenda ? (item.margem>=0.65?'text-brand-olive':'text-amber-700') : 'text-zinc-300'}`}>

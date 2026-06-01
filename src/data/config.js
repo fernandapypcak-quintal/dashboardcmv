@@ -78,4 +78,4 @@ export const ALMOCO_INICIO = 11;
 export const ALMOCO_FIM    = 15;
 
 // Meta CMV global
-export const META_CMV = 0.30;
+export const META_CMV = 0.35;

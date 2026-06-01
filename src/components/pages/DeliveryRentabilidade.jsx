@@ -91,9 +91,9 @@ export default function DeliveryRentabilidade() {
   const filtrados = dados.porProduto.filter(r => {
     const { cmvReal } = calcCMV(r);
     if (!r.nomePa.toLowerCase().includes(busca.toLowerCase())) return false;
-    if (filtroCrit === 'Crítico') return cmvReal > 1;
-    if (filtroCrit === 'Atenção') return cmvReal >= 0.30 && cmvReal < 1;
-    if (filtroCrit === 'OK')      return cmvReal < 0.30;
+    if (filtroCrit === 'Crítico') return cmvReal >= 0.80;
+    if (filtroCrit === 'Atenção') return cmvReal >= 0.35 && cmvReal < 0.80;
+    if (filtroCrit === 'OK')      return cmvReal < 0.35;
     return true;
   }).sort((a, b) => {
     const ca = calcCMV(a), cb = calcCMV(b);
@@ -261,7 +261,7 @@ export default function DeliveryRentabilidade() {
                     </td>
                     <td className="px-3 py-2.5 text-right font-mono text-zinc-600">{brlK(custoTotal)}</td>
                     <td className={`px-3 py-2.5 text-right font-mono font-bold
-                      ${cmvReal>1?'text-brand-crimson':cmvReal>=0.30?'text-amber-700':'text-brand-olive'}`}>
+                      ${cmvReal>=0.80?'text-brand-crimson':cmvReal>=0.35?'text-amber-700':'text-brand-olive'}`}>
                       {pct(cmvReal)}
                     </td>
                     <td className={`px-3 py-2.5 text-right font-mono font-semibold

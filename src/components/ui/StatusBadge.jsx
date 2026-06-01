@@ -1,8 +1,8 @@
 export default function StatusBadge({ cmvPct }) {
-  const status = cmvPct > 1 ? 'Crítico' : cmvPct >= 0.30 ? 'Atenção' : 'OK';
-  const cls = cmvPct > 1
+  const status = cmvPct >= 0.80 ? 'Crítico' : cmvPct >= 0.35 ? 'Atenção' : 'OK';
+  const cls = cmvPct >= 0.80
     ? 'bg-red-50 text-brand-crimson border-red-100'
-    : cmvPct >= 0.30
+    : cmvPct >= 0.35
     ? 'bg-amber-50 text-amber-700 border-amber-100'
     : 'bg-green-50 text-brand-olive border-green-100';
   return (

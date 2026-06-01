@@ -152,9 +152,9 @@ export function CMVProvider({ children }) {
     const somaPrecos = comPreco.reduce((s, r) => s + r.precoVenda, 0);
     const cmvAtual   = somaPrecos > 0 ? somaCustos / somaPrecos : 0;
     const margem     = avg(comPreco.map(r => r.margemContribPct));
-    const criticos   = comPreco.filter(r => r.cmvPct > META_CMV * 1.5).length;
-    const atencao    = comPreco.filter(r => r.cmvPct >= META_CMV && r.cmvPct <= META_CMV * 1.5).length;
-    const okCount    = comPreco.filter(r => r.cmvPct < META_CMV).length;
+    const criticos   = comPreco.filter(r => r.cmvPct >= 0.80).length;
+    const atencao    = comPreco.filter(r => r.cmvPct >= 0.35 && r.cmvPct < 0.80).length;
+    const okCount    = comPreco.filter(r => r.cmvPct < 0.35).length;
     const totalDesp  = desperdicioFiltrado.reduce((s, r) => s + r.custoTotal, 0);
     const maiorDesp  = [...new Set(desperdicioFiltrado.map(r => r.unidade))]
       .map(u => ({ u, v: desperdicioFiltrado.filter(r=>r.unidade===u).reduce((s,r)=>s+r.custoTotal,0) }))
@@ -260,7 +260,7 @@ export function CMVProvider({ children }) {
       if (!map[r.categoria]) map[r.categoria] = { categoria: r.categoria, cmvs: [], margens: [], criticos: 0 };
       map[r.categoria].cmvs.push(r.cmvPct);
       map[r.categoria].margens.push(r.margemContribPct);
-      if (r.cmvPct > META_CMV * 1.5) map[r.categoria].criticos++;
+      if (r.cmvPct >= 0.80) map[r.categoria].criticos++;
     });
     return Object.values(map).map(r => ({
       categoria:   r.categoria,

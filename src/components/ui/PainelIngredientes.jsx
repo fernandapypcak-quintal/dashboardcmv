@@ -12,10 +12,10 @@ export default function PainelIngredientes({ produto, onClose }) {
   const { history = [] } = useCMV();
   if (!produto) return null;
 
-  const status = produto.cmvPct > 1 ? 'Crítico' : produto.cmvPct >= 0.30 ? 'Atenção' : 'OK';
-  const statusBg = produto.cmvPct > 1
+  const status = produto.cmvPct >= 0.80 ? 'Crítico' : produto.cmvPct >= 0.35 ? 'Atenção' : 'OK';
+  const statusBg = produto.cmvPct >= 0.80
     ? 'bg-red-50 text-brand-crimson border-red-200'
-    : produto.cmvPct >= 0.30
+    : produto.cmvPct >= 0.35
     ? 'bg-amber-50 text-amber-700 border-amber-200'
     : 'bg-green-50 text-brand-olive border-green-200';
 
