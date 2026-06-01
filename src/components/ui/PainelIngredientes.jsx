@@ -1,9 +1,15 @@
-import { X, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { useMemo } from 'react';
+import { X, TrendingUp, TrendingDown } from 'lucide-react';
+import { useCMV } from '../../hooks/useCMV';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 
 const brl = v => `R$ ${(v||0).toFixed(2)}`;
 const pct = v => `${((v||0)*100).toFixed(1)}%`;
 
-export default function PainelIngredientes({ produto, histComp = [], onClose }) {
+const LIMITE_VARIACAO = 5; // % de variação para destacar
+
+export default function PainelIngredientes({ produto, onClose }) {
+  const { history = [] } = useCMV();
   if (!produto) return null;
 
   const status = produto.cmvPct > 1 ? 'Crítico' : produto.cmvPct >= 0.30 ? 'Atenção' : 'OK';
@@ -15,34 +21,60 @@ export default function PainelIngredientes({ produto, histComp = [], onClose }) 
 
   const ingredientes = produto.ingredientes || [];
 
-  // Busca histórico de variação dos componentes deste produto
-  const semanas = [...new Set(histComp.filter(r => r.codPa === produto.codPa).map(r => r.semanaISO))].sort();
-  const semAtual = semanas.at(-1) ?? '';
-  const semAnt   = semanas.at(-2) ?? '';
-  const temHistorico = semanas.length >= 2;
+  // Busca variação de cada ingrediente no history.json
+  const variacaoInsumos = useMemo(() => {
+    if (!history.length) return {};
+    const snaps = [...history].sort((a, b) => new Date(a.ts) - new Date(b.ts));
+    const snapAtual = snaps[snaps.length - 1];
+    const snapAnt   = snaps[snaps.length - 2];
+    if (!snapAtual || !snapAnt) return {};
 
-  // Mapa de variação: codComponente → { atual, anterior, delta }
-  const variacaoMap = {};
-  if (temHistorico) {
-    histComp
-      .filter(r => r.codPa === produto.codPa && r.semanaISO === semAtual)
-      .forEach(r => {
-        const ant = histComp.find(h => h.codPa === produto.codPa && h.semanaISO === semAnt && h.codComponente === r.codComponente);
-        variacaoMap[r.codComponente] = {
-          custoAtual: r.custoUnit,
-          custoAnt:   ant ? ant.custoUnit : r.custoUnit,
-          delta:      ant ? r.custoUnit - ant.custoUnit : 0,
+    const insAtual = snapAtual.snap?.insumos || {};
+    const insAnt   = snapAnt.snap?.insumos   || {};
+    const result = {};
+
+    ingredientes.forEach(ing => {
+      const cod = ing.codComponente;
+      const atual = insAtual[cod];
+      const ant   = insAnt[cod];
+      if (!atual || !ant) return;
+      const delta    = atual.custo - ant.custo;
+      const deltaPct = ant.custo > 0 ? (delta / ant.custo * 100) : 0;
+      if (Math.abs(deltaPct) >= LIMITE_VARIACAO) {
+        result[cod] = { custoAnt: ant.custo, custoAtual: atual.custo, delta, deltaPct };
+      }
+    });
+    return result;
+  }, [history, ingredientes]);
+
+  // Evolução do CMV do produto no history
+  const evolucaoCMV = useMemo(() => {
+    if (!history.length) return [];
+    return [...history]
+      .sort((a, b) => new Date(a.ts) - new Date(b.ts))
+      .map(snap => {
+        const fichas = Object.values(snap.snap?.fichas || {});
+        const ficha  = fichas.find(f => f.codPA === produto.codPa);
+        if (!ficha) return null;
+        const d = new Date(snap.ts);
+        return {
+          data: `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`,
+          cmv:  parseFloat((ficha.cmv || 0).toFixed(1)),
         };
-      });
-  }
+      })
+      .filter(Boolean);
+  }, [history, produto.codPa]);
+
+  const temVariacao    = Object.keys(variacaoInsumos).length > 0;
+  const temEvolucao    = evolucaoCMV.length >= 2;
 
   return (
     <>
       <div className="fixed inset-0 bg-black/20 z-40" onClick={onClose}/>
-      <div className="fixed top-0 right-0 h-full w-[480px] bg-white shadow-2xl z-50 flex flex-col overflow-hidden">
+      <div className="fixed top-0 right-0 h-full w-[520px] bg-white shadow-2xl z-50 flex flex-col overflow-hidden">
 
         {/* Header */}
-        <div className="px-6 py-5 border-b border-surface-border">
+        <div className="px-6 py-5 border-b border-surface-border shrink-0">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1 min-w-0">
               <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wide mb-1">
@@ -50,12 +82,12 @@ export default function PainelIngredientes({ produto, histComp = [], onClose }) 
               </p>
               <h2 className="text-[18px] font-bold text-brand-black leading-tight">{produto.nomePa}</h2>
             </div>
-            <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-muted shrink-0 mt-0.5">
+            <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-muted shrink-0">
               <X size={16} className="text-zinc-400"/>
             </button>
           </div>
 
-          {/* KPIs do produto */}
+          {/* KPIs */}
           <div className="grid grid-cols-3 gap-3 mt-4">
             <div className="bg-surface-base rounded-lg p-3">
               <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wide mb-1">Preço venda</p>
@@ -74,7 +106,6 @@ export default function PainelIngredientes({ produto, histComp = [], onClose }) 
             </div>
           </div>
 
-          {/* Margem e sugestão */}
           <div className="flex items-center gap-4 mt-3 text-[12px]">
             <div className="flex items-center gap-1.5">
               <span className="text-zinc-400">Margem:</span>
@@ -90,80 +121,116 @@ export default function PainelIngredientes({ produto, histComp = [], onClose }) 
             )}
           </div>
 
-          {/* Banner histórico indisponível */}
-          {!temHistorico && (
-            <div className="mt-3 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 text-[11px] text-amber-700">
-              ℹ Grave 2 snapshots semanais para ver a variação de custo de cada ingrediente.
+          {/* Alerta de insumos variados */}
+          {temVariacao && (
+            <div className="mt-3 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 flex items-center gap-2">
+              <TrendingUp size={13} className="text-amber-600 shrink-0"/>
+              <p className="text-[11px] text-amber-700 font-medium">
+                {Object.keys(variacaoInsumos).length} ingrediente{Object.keys(variacaoInsumos).length > 1 ? 's' : ''} com variação de custo acima de {LIMITE_VARIACAO}%
+              </p>
             </div>
           )}
         </div>
 
-        {/* Ingredientes */}
+        {/* Conteúdo scrollável */}
         <div className="flex-1 overflow-y-auto">
-          <div className="px-6 py-4">
-            <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wide mb-3">
-              Composição — {ingredientes.length} ingrediente{ingredientes.length !== 1 ? 's' : ''}
-              {temHistorico && <span className="ml-2 text-brand-olive">· variação {semAnt.replace('2026-','')} → {semAtual.replace('2026-','')}</span>}
-            </p>
+          <div className="px-6 py-4 space-y-5">
 
-            {ingredientes.length === 0 ? (
-              <p className="text-sm text-zinc-400 text-center py-8">
-                Nenhum ingrediente encontrado na ficha técnica.
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {ingredientes
-                  .sort((a, b) => b.custoIngr - a.custoIngr)
-                  .map((ing, i) => {
-                    const share = produto.custoIngr > 0 ? ing.custoIngr / produto.custoIngr : 0;
-                    const hist  = variacaoMap[ing.codComponente];
-                    const delta = hist ? hist.delta : 0;
-                    const subiu = delta > 0.01;
-                    const caiu  = delta < -0.01;
-
-                    return (
-                      <div key={i} className="bg-surface-base rounded-xl p-3.5">
-                        <div className="flex items-start justify-between mb-2">
-                          <p className="text-[13px] font-medium text-brand-black leading-tight flex-1">
-                            {ing.descComponente || ing.codComponente || 'Ingrediente'}
-                          </p>
-                          <div className="text-right ml-3 shrink-0">
-                            <p className="text-[14px] font-mono font-semibold text-brand-black">{brl(ing.custoIngr)}</p>
-                            {/* Variação de custo unitário */}
-                            {temHistorico && hist && (
-                              <div className={`flex items-center justify-end gap-1 text-[11px] font-medium mt-0.5
-                                ${subiu?'text-brand-crimson':caiu?'text-brand-olive':'text-zinc-400'}`}>
-                                {subiu ? <TrendingUp size={11}/> : caiu ? <TrendingDown size={11}/> : <Minus size={11}/>}
-                                {subiu?'+':''}{brl(delta)} unit.
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Barra de participação */}
-                        <div className="h-1.5 bg-surface-border rounded-full overflow-hidden mb-2">
-                          <div className="h-full rounded-full bg-brand-olive"
-                            style={{ width: `${(share * 100).toFixed(0)}%` }}/>
-                        </div>
-
-                        <div className="flex items-center justify-between text-[11px] text-zinc-400">
-                          <span>{ing.qtd} {ing.und} × {brl(ing.custoUnit)}/un</span>
-                          <span className="font-semibold text-zinc-600">{(share * 100).toFixed(1)}% do custo</span>
-                        </div>
-                      </div>
-                    );
-                  })}
+            {/* Gráfico de evolução do CMV */}
+            {temEvolucao && (
+              <div>
+                <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wide mb-3">
+                  Evolução do CMV
+                </p>
+                <div className="bg-surface-base rounded-xl p-3">
+                  <ResponsiveContainer width="100%" height={120}>
+                    <LineChart data={evolucaoCMV} margin={{top:4,right:8,left:-20,bottom:0}}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" vertical={false}/>
+                      <XAxis dataKey="data" tick={{fontSize:10,fill:'#999'}} axisLine={false} tickLine={false}/>
+                      <YAxis tick={{fontSize:10,fill:'#999'}} tickFormatter={v=>`${v}%`} axisLine={false} tickLine={false}/>
+                      <Tooltip formatter={v=>[`${v}%`,'CMV']} contentStyle={{background:'#fff',border:'1px solid #e8e8e2',borderRadius:8,fontSize:11}}/>
+                      <ReferenceLine y={30} stroke="#97A624" strokeDasharray="4 2" strokeWidth={1}/>
+                      <Line type="monotone" dataKey="cmv" stroke="#8C1414" strokeWidth={2} dot={{r:3}} activeDot={{r:5}}/>
+                    </LineChart>
+                  </ResponsiveContainer>
+                  <p className="text-[10px] text-zinc-300 text-right mt-1">linha verde = meta 30%</p>
+                </div>
               </div>
             )}
 
+            {/* Ingredientes */}
+            <div>
+              <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wide mb-3">
+                Composição — {ingredientes.length} ingrediente{ingredientes.length !== 1 ? 's' : ''}
+              </p>
+
+              {ingredientes.length === 0 ? (
+                <p className="text-sm text-zinc-400 text-center py-6">Nenhum ingrediente encontrado.</p>
+              ) : (
+                <div className="space-y-2">
+                  {ingredientes
+                    .sort((a, b) => b.custoIngr - a.custoIngr)
+                    .map((ing, i) => {
+                      const share   = produto.custoIngr > 0 ? ing.custoIngr / produto.custoIngr : 0;
+                      const variou  = variacaoInsumos[ing.codComponente];
+                      const subiu   = variou && variou.delta > 0;
+                      const caiu    = variou && variou.delta < 0;
+
+                      return (
+                        <div key={i} className={`rounded-xl p-3.5 border transition-colors
+                          ${variou
+                            ? subiu
+                              ? 'bg-red-50 border-red-200'
+                              : 'bg-green-50 border-green-200'
+                            : 'bg-surface-base border-transparent'}`}>
+
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                              {variou && (
+                                subiu
+                                  ? <TrendingUp size={12} className="text-brand-crimson shrink-0"/>
+                                  : <TrendingDown size={12} className="text-brand-olive shrink-0"/>
+                              )}
+                              <p className="text-[13px] font-medium text-brand-black leading-tight truncate">
+                                {ing.descComponente || ing.codComponente}
+                              </p>
+                            </div>
+                            <div className="text-right ml-3 shrink-0">
+                              <p className="text-[14px] font-mono font-semibold text-brand-black">{brl(ing.custoIngr)}</p>
+                              {variou && (
+                                <div className={`text-[11px] font-semibold mt-0.5 ${subiu?'text-brand-crimson':'text-brand-olive'}`}>
+                                  {subiu?'↑':'↓'} {brl(variou.custoAnt)} → {brl(variou.custoAtual)}
+                                  <span className="ml-1 opacity-70">({variou.deltaPct > 0 ? '+' : ''}{variou.deltaPct.toFixed(1)}%)</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="h-1.5 bg-white/60 rounded-full overflow-hidden mb-2">
+                            <div className={`h-full rounded-full ${variou ? (subiu ? 'bg-brand-crimson' : 'bg-brand-olive') : 'bg-brand-olive'}`}
+                              style={{ width: `${(share * 100).toFixed(0)}%` }}/>
+                          </div>
+
+                          <div className="flex items-center justify-between text-[11px] text-zinc-400">
+                            <span>{ing.qtd} {ing.und} × {brl(ing.custoUnit)}/un</span>
+                            <span className="font-semibold text-zinc-600">{(share * 100).toFixed(1)}% do custo</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
+
             {/* Total */}
-            <div className="mt-3 bg-brand-black rounded-xl p-3.5 flex items-center justify-between">
+            <div className="bg-brand-black rounded-xl p-3.5 flex items-center justify-between">
               <p className="text-[13px] font-semibold text-white">Total</p>
               <div className="text-right">
                 <p className="text-[16px] font-bold text-white">{brl(produto.custoIngr)}</p>
                 <p className="text-[11px] text-zinc-400">de {brl(produto.precoVenda)} vendidos</p>
               </div>
             </div>
+
           </div>
         </div>
       </div>
