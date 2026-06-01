@@ -109,7 +109,7 @@ export default function Home({ onPageChange }) {
         <div className="bg-white border border-surface-border rounded-xl overflow-hidden">
           <div className="px-5 py-3.5 border-b border-surface-border flex items-center justify-between">
             <div>
-              <p className="font-semibold text-brand-black text-sm">CMV acima de 100% — prejuízo a cada venda</p>
+              <p className="font-semibold text-brand-black text-sm">CMV acima de 80% — prejuízo a cada venda</p>
               <p className="text-xs text-zinc-400 mt-0.5">clique no produto para ver a composição e ajustar</p>
             </div>
             <button onClick={() => onPageChange('rentabilidade')}
