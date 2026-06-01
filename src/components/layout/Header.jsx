@@ -13,9 +13,9 @@ const TITLES = {
 
 // Filtros locais por página
 const FILTROS_PAGINA = {
-  home:              ['categoria'],
-  rentabilidade:     ['categoria'],
-  volume:            ['categoria', 'semana'],
+  home:              ['categoria', 'cat_contabil'],
+  rentabilidade:     ['categoria', 'cat_contabil'],
+  volume:            ['categoria', 'cat_contabil', 'semana'],
   desperdicio:       ['mes'],
   variacao:          ['categoria'],
   delivery_rent:     ['semana'],
@@ -32,6 +32,8 @@ export default function Header({ activePage }) {
     filtroMes,     setFiltroMes,
     filtroSemana,  setFiltroSemana,
     semanasDisponiveis,
+    filtroCatContabil, setFiltroCatContabil,
+    opcoesCatContabil,
   } = useCMV();
 
   const filtrosLocais = FILTROS_PAGINA[activePage] ?? [];
@@ -69,6 +71,14 @@ export default function Header({ activePage }) {
             )}
             {filtrosLocais.includes('mes') && (
               <Sel label="Mês" value={filtroMes} onChange={setFiltroMes} opts={opcoesMeses} />
+            )}
+            {filtrosLocais.includes('cat_contabil') && (
+              <Sel
+                label="Conta"
+                value={filtroCatContabil}
+                onChange={setFiltroCatContabil}
+                opts={opcoesCatContabil || ['Todas']}
+              />
             )}
             {filtrosLocais.includes('semana') && (
               <Sel
