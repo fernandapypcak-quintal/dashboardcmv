@@ -103,12 +103,35 @@ export function CMVProvider({ children }) {
     ),
   [produtosUnicos, filtroCat, filtroCatContabil]);
 
-  const vendasFiltradas = useMemo(() =>
-    vendas.filter(r =>
-      (filtroLoja    === 'Todas' || r.loja     === filtroLoja) &&
-      (filtroPeriodo === 'Todos' || r.periodo  === filtroPeriodo)
-    ),
-  [vendas, filtroLoja, filtroPeriodo]);
+  // Semana atual e anterior calculadas dinamicamente
+  const semanaAtualISO = useMemo(() => {
+    const hoje = new Date();
+    hoje.setHours(12,0,0,0);
+    hoje.setDate(hoje.getDate() + 4 - (hoje.getDay() || 7));
+    const yearStart = new Date(hoje.getFullYear(), 0, 1);
+    const weekNo = Math.ceil(((hoje - yearStart) / 86400000 + 1) / 7);
+    return hoje.getFullYear() + '-W' + String(weekNo).padStart(2, '0');
+  }, []);
+
+  const semanaAnteriorISO = useMemo(() => {
+    const sems = [...new Set(vendas.map(r => r.semanaISO || '').filter(Boolean))].sort();
+    const idx = sems.indexOf(semanaAtualISO);
+    return idx > 0 ? sems[idx - 1] : sems[sems.length - 2] || semanaAtualISO;
+  }, [vendas, semanaAtualISO]);
+
+  const vendasFiltradas = useMemo(() => {
+    return vendas.filter(r => {
+      if (filtroLoja    !== 'Todas' && r.loja    !== filtroLoja)    return false;
+      if (filtroPeriodo !== 'Todos' && r.periodo !== filtroPeriodo) return false;
+      // Filtro de semana
+      if (filtroSemana === 'atual')    return r.semanaISO === semanaAtualISO;
+      if (filtroSemana === 'anterior') return r.semanaISO === semanaAnteriorISO;
+      if (filtroSemana && filtroSemana !== 'atual' && filtroSemana !== 'anterior') {
+        return r.semanaISO === filtroSemana;
+      }
+      return true;
+    });
+  }, [vendas, filtroLoja, filtroPeriodo, filtroSemana, semanaAtualISO, semanaAnteriorISO]);
 
   const desperdicioFiltrado = useMemo(() =>
     desperdicio.filter(r =>
