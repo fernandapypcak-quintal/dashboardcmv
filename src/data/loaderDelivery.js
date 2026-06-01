@@ -22,9 +22,20 @@ export async function loadDeliveryData(fichas = [], semana = null) {
   });
 
   // Busca vendas delivery
-  const params = semana && semana !== 'atual' && semana !== 'anterior' ? { semana } : {};
-  const res    = await fetchTipo('vendas_delivery', params);
-  const vendas = (res.vendas ?? []).filter(r => r.productSku && r.count > 0);
+  const res    = await fetchTipo('vendas_delivery');
+  const todasVendas = (res.vendas ?? []).filter(r => r.productSku && r.count > 0);
+
+  // Determina semana a usar — igual ao salão
+  const semsDisp = [...new Set(todasVendas.map(v => String(v.semana_iso || v.semanaISO || '').trim()).filter(Boolean))].sort();
+  const semAtual = semsDisp[semsDisp.length - 1] || '';
+  const semAnt   = semsDisp[semsDisp.length - 2] || semAtual;
+  const semTarget = semana === 'anterior' ? semAnt : semana && semana !== 'atual' ? semana : semAtual;
+
+  const vendas = semTarget
+    ? todasVendas.filter(v => String(v.semana_iso || v.semanaISO || '').trim() === semTarget)
+    : todasVendas;
+
+  console.log('[Delivery] semana:', semTarget, '| vendas filtradas:', vendas.length, '| semanas disponíveis:', semsDisp.length);
 
   // Agrupa por SKU
   const porProduto = new Map();
