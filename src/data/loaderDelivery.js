@@ -24,9 +24,11 @@ export async function loadDeliveryData(fichas = [], semana = null) {
   // Busca vendas delivery
   const res    = await fetchTipo('vendas_delivery');
   const todasVendas = (res.vendas ?? []).filter(r => r.productSku && r.count > 0);
+  console.log('[Delivery raw] total vendas:', todasVendas.length, '| exemplo:', JSON.stringify(todasVendas[0])?.slice(0,200));
 
   // Determina semana a usar — igual ao salão
   const semsDisp = [...new Set(todasVendas.map(v => String(v.semana_iso || v.semanaISO || '').trim()).filter(Boolean))].sort();
+  console.log('[Delivery raw] semanas encontradas:', semsDisp);
   const semAtual = semsDisp[semsDisp.length - 1] || '';
   const semAnt   = semsDisp[semsDisp.length - 2] || semAtual;
   const semTarget = semana === 'anterior' ? semAnt : semana && semana !== 'atual' ? semana : semAtual;
