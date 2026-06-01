@@ -3,7 +3,7 @@ import { useCMV } from '../../hooks/useCMV';
 import PainelIngredientes from '../ui/PainelIngredientes';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer } from 'recharts';
 
-const brlK = v => v >= 1000 ? `R$ ${(v/1000).toFixed(1)}k` : `R$ ${v.toFixed(0)}`;
+const brlK = v => { const n = v||0; return n >= 1000 ? `R$ ${(n/1000).toFixed(1)}k` : `R$ ${n.toFixed(0)}`; };
 const brl  = v => `R$ ${(v||0).toFixed(2)}`;
 const pct  = v => `${((v||0)*100).toFixed(1)}%`;
 const CORES = ['#97A624','#D9B504','#8C1414','#2980b9','#e67e22','#9b59b6'];

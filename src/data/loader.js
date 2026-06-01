@@ -86,12 +86,13 @@ function parseVenda(r) {
 
 // ── Entry point ───────────────────────────────────────────────
 export async function loadCMVData() {
-  const [resFichas, resDesperdicio, resVendas, resParams, resHistory] = await Promise.all([
+  const [resFichas, resDesperdicio, resVendas, resParams, resHistory, resHistorico] = await Promise.all([
     fetchTipo('fichas'),
     fetchTipo('desperdicio'),
     fetchTipo('vendas'),
     fetchTipo('parametros'),
     fetchTipo('history'),
+    fetchTipo('historico'),
   ]);
 
   const fichas = (resFichas.fichas ?? [])
@@ -108,7 +109,20 @@ export async function loadCMVData() {
 
   const parametros = resParams.parametros ?? { taxa_ifood: 24.8, embalagem_padrao: 3.0 };
   const history    = resHistory.history    ?? [];
+  const historico  = (resHistorico.historico ?? []).map(r => ({
+    data:         String(r.data         || '').slice(0,10),
+    codPa:        String(r.cod_pa       || ''),
+    nomePa:       String(r.nome_pa      || ''),
+    categoria:    String(r.categoria    || ''),
+    subcategoria: String(r.subcategoria || ''),
+    catContabil:  String(r.cat_contabil || ''),
+    cardapio:     String(r.cardapio     || 'Sim'),
+    skuZig:       String(r.sku_zig      || ''),
+    custoIngr:    parseFloat(r.custo_ingr)  || 0,
+    precoVenda:   parseFloat(r.preco_venda) || 0,
+    cmvPct:       parseFloat(r.cmv_pct)     || 0,
+  }));
 
   console.log(`[CMV] fichas=${fichas.length} desperdício=${desperdicio.length} vendas=${vendas.length} history=${history.length}`);
-  return { fichas, desperdicio, vendas, parametros, history };
+  return { fichas, desperdicio, vendas, parametros, history, historico };
 }

@@ -15,6 +15,7 @@ export function CMVProvider({ children }) {
   const [vendas,      setVendas]      = useState([]);
   const [parametros,  setParametros]  = useState({ taxa_ifood: 24.8, embalagem_padrao: 3.0 });
   const [history,     setHistory]     = useState([]);
+  const [historico,   setHistorico]   = useState([]);
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState(null);
 
@@ -28,12 +29,13 @@ export function CMVProvider({ children }) {
 
   useEffect(() => {
     loadCMVData()
-      .then(({ fichas, desperdicio, vendas, parametros, history }) => {
+      .then(({ fichas, desperdicio, vendas, parametros, history, historico }) => {
         setFichas(fichas || []);
         setDesperdicio(desperdicio || []);
         setVendas(vendas || []);
         setParametros(parametros || { taxa_ifood: 24.8, embalagem_padrao: 3.0 });
         setHistory(history || []);
+        setHistorico(historico || []);
         setLoading(false);
       })
       .catch(e => { setError(e.message); setLoading(false); });
@@ -159,29 +161,31 @@ export function CMVProvider({ children }) {
       .sort((a,b) => b.v-a.v)[0];
 
     return {
-      cmvAtual, cmvAnt: cmvAtual, deltaCMV: 0,
+      cmvAtual: cmvAtual || 0, cmvAnt: cmvAtual || 0, deltaCMV: 0,
       margem, criticos, atencao, okCount,
       totalDesperdicio: totalDesp,
       maiorDesperdicio: maiorDesp?.u || '—',
     };
   }, [produtosFiltrados, desperdicioFiltrado]);
 
-  // ── Evolução CMV (do history.json) ────────────────────────
+  // ── Evolução CMV (do histórico da planilha) ─────────────────
   const evolucaoCMV = useMemo(() => {
-    if (!history.length) return [];
-    return [...history]
-      .sort((a, b) => new Date(a.ts) - new Date(b.ts))
-      .map(snap => {
-        const fichasSnap = Object.values(snap.snap?.fichas || {});
-        const comPreco   = fichasSnap.filter(f => f.preco > 0 && f.card === 'Sim');
-        const somaCustos = comPreco.reduce((s,f) => s + (f.custoTotal||0), 0);
-        const somaPrecos = comPreco.reduce((s,f) => s + (f.preco||0), 0);
-        const cmv        = somaPrecos > 0 ? somaCustos / somaPrecos : 0;
-        const d = new Date(snap.ts);
-        const semana = `W${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
-        return { semana, cmv, ts: snap.ts };
-      });
-  }, [history]);
+    if (!historico.length) return [];
+    // Agrupa por data
+    const porData = {};
+    historico.filter(r => r.cardapio === 'Sim' && r.precoVenda > 0).forEach(r => {
+      if (!porData[r.data]) porData[r.data] = { custos: 0, precos: 0 };
+      porData[r.data].custos += r.custoIngr;
+      porData[r.data].precos += r.precoVenda;
+    });
+    return Object.entries(porData)
+      .sort(([a],[b]) => a.localeCompare(b))
+      .map(([data, v]) => ({
+        semana: data.slice(5), // MM-DD
+        cmv: v.precos > 0 ? v.custos / v.precos : 0,
+        ts: data,
+      }));
+  }, [historico]);
 
   // ── Volume por produto (cruza vendas × fichas) ────────────
   const volumePorProduto = useMemo(() => {
@@ -275,6 +279,7 @@ export function CMVProvider({ children }) {
       desperdicioRaw: desperdicio,
       vendas: vendasFiltradas,
       history,
+      historico,
       parametros,
       // Derivados
       kpis, evolucaoCMV, volumePorProduto,
