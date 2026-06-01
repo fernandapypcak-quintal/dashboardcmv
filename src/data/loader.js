@@ -107,61 +107,29 @@ export async function saveParametros(params) {
 
 // ── Entry point ────────────────────────────────────────────
 export async function loadCMVData() {
-  const [resFichas, resDesperdicio, resHistorico, resHistProd, resHistComp, resVendas, resParams] = await Promise.all([
+  const [resFichas, resDesperdicio, resVendas, resParams, resHistory] = await Promise.all([
     fetchTipo('fichas'),
     fetchTipo('desperdicio'),
-    fetchTipo('historico'),
-    fetchTipo('hist_prod'),
-    fetchTipo('hist_comp'),
     fetchTipo('vendas'),
     fetchTipo('parametros'),
+    fetchTipo('history'),
   ]);
 
   const fichas = (resFichas.fichas ?? [])
     .map(parseFicha)
     .filter(r => r.codPa && r.nomePa);
 
-  const historico = (resHistorico.historico ?? [])
-    .filter(r => r.semana_iso && r.categoria)
-    .map(r => ({
-      semanaISO:    s(r.semana_iso),
-      dataRef:      s(r.data_ref),
-      categoria:    s(r.categoria),
-      subcategoria: s(r.subcategoria),
-      qtdProdutos:  n(r.qtd_produtos),
-      cmvMedio:     n(r.cmv_medio),
-      margemMedia:  n(r.margem_media),
-      qtdCriticos:  n(r.qtd_criticos),
-      status:       s(r.status) || 'OK',
-    }));
+  // historico/histProd/histComp substituídos pelo history.json do inventário
+  const historico = [];
 
   const desperdicio = (resDesperdicio.desperdicio ?? [])
     .map(parseDesperdicio)
     .filter(r => r.unidade);
   console.log('[desperdicio] parsed:', desperdicio.length, '| exemplo unidade:', desperdicio[0]?.unidade, '| custo:', desperdicio[0]?.custoTotal);
 
-  const histProd = (resHistProd.hist_prod ?? [])
-    .filter(r => r.semana_iso && r.cod_pa)
-    .map(parseHistProd);
-
-  const histComp = (resHistComp.hist_comp ?? [])
-    .filter(r => r.semana_iso && r.cod_pa && r.cod_componente)
-    .map(r => ({
-      semanaISO:      String(r.semana_iso        || '').trim(),
-      dataRef:        String(r.data_ref          || '').trim(),
-      codPa:          String(r.cod_pa            || '').trim(),
-      nomePa:         String(r.nome_pa           || '').trim(),
-      categoria:      String(r.categoria         || '').trim(),
-      subcategoria:   String(r.subcategoria      || '').trim(),
-      codComponente:  String(r.cod_componente    || '').trim(),
-      descComponente: String(r.desc_componente   || '').trim(),
-      qtd:            n(r.qtd),
-      und:            String(r.und               || '').trim(),
-      custoUnit:      n(r.custo_unit),
-      custoIngr:      n(r.custo_ingr),
-      custoTotalPa:   n(r.custo_total_pa),
-      participacaoPct: n(r.participacao_pct),
-    }));
+  const histProd = [];
+  const histComp = [];
+  const history  = resHistory.history ?? [];
 
   const vendas = (resVendas.vendas ?? [])
     .map(parseVenda)
@@ -169,6 +137,6 @@ export async function loadCMVData() {
 
   const parametros = resParams.parametros ?? { taxa_ifood: 24.8, embalagem_padrao: 3.0 };
 
-  console.log(`[CMV] fichas=${fichas.length} histórico=${historico.length} desperdício=${desperdicio.length} histProd=${histProd.length} histComp=${histComp.length} vendas=${vendas.length}`);
-  return { fichas, historico, desperdicio, histProd, histComp, vendas, parametros };
+  console.log(`[CMV] fichas=${fichas.length} desperdício=${desperdicio.length} vendas=${vendas.length} history=${history.length}`);
+  return { fichas, historico, desperdicio, histProd, histComp, vendas, parametros, history };
 }

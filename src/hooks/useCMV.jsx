@@ -17,6 +17,7 @@ export function CMVProvider({ children }) {
   const [histProd,   setHistProd]   = useState([]);
   const [histComp,   setHistComp]   = useState([]);
   const [parametros, setParametros] = useState({ taxa_ifood: 24.8, embalagem_padrao: 3.0 });
+  const [history,    setHistory]    = useState([]);
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState(null);
 
@@ -30,7 +31,7 @@ export function CMVProvider({ children }) {
 
   useEffect(() => {
     loadCMVData()
-      .then(({ fichas, historico, histProd, histComp, desperdicio, vendas, parametros }) => {
+      .then(({ fichas, historico, histProd, histComp, desperdicio, vendas, parametros, history }) => {
         setFichas(fichas);
         setHistorico(historico);
         setDesperdicio(desperdicio);
@@ -38,6 +39,248 @@ export function CMVProvider({ children }) {
         setHistProd(histProd || []);
         setHistComp(histComp || []);
         setParametros(parametros || { taxa_ifood: 24.8, embalagem_padrao: 3.0 });
+        setHistory(history || []);
+        setLoading(false);
+      })
+      .catch(e => { setError(e.message); setLoading(false); });
+  }, []);
+
+  // Filtro de loja: deriva dos dados reais
+  const opcoesLojas = useMemo(() => {
+    const lojas = new Set([
+      ...desperdicio.map(r => r.unidade),
+    ].filter(Boolean));
+    return ['Todas', ...[...lojas].sort()];
+  }, [desperdicio]);
+
+  const opcoesCats = useMemo(() =>
+    ['Todas', ...new Set(fichas.map(r=>r.categoria).filter(Boolean))].sort(),
+  [fichas]);
+
+  const opcoesMeses = useMemo(() => {
+    const ms = [...new Set(desperdicio.map(r=>r.mes).filter(Boolean))];
+    return ['Todos', ...ms.sort((a,b)=>MESES_ORDER.indexOf(a)-MESES_ORDER.indexOf(b))];
+  }, [desperdicio]);
+
+  // ── Produtos únicos (agrupados por PA, não por ingrediente) ───
+  // Cada produto final aparece uma vez com seus totais
+  const produtosUnicos = useMemo(() => {
+    const map = new Map();
+    fichas.forEach(r => {
+      const key = r.codPa;
+      if (!map.has(key)) {
+        map.set(key, {
+          codPa:        r.codPa,
+          skuZig:       r.skuZig,
+          nomePa:       r.nomePa,
+          categoria:    r.categoria,
+          subcategoria: r.subcategoria,
+          precoVenda:   r.precoVenda,
+          custoIngr:    0,
+          cmvPct:       0, // calculado após somar ingredientes
+          margemContribR:   0,
+          margemContribPct: 0,
+          precoSugerido:    0,
+          ingredientes: [],
+        });
+      }
+      map.get(key).ingredientes.push({
+        codComponente:  r.codComponente,
+        descComponente: r.descComponente,
+        qtd:            r.qtd,
+        und:            r.und,
+        custoUnit:      r.custoUnit,
+        custoIngr:      r.custoIngr,
+      });
+    });
+    // Recalcula custo total: soma simples de custoIngr de cada ingrediente
+    map.forEach(p => {
+      p.custoIngr = p.ingredientes.reduce((s, ing) => s + (ing.custoIngr || 0), 0);
+      if (p.precoVenda > 0) {
+        p.cmvPct           = p.custoIngr / p.precoVenda;
+        p.margemContribR   = p.precoVenda - p.custoIngr;
+        p.margemContribPct = (p.precoVenda - p.custoIngr) / p.precoVenda;
+        p.precoSugerido    = p.custoIngr > 0 ? p.custoIngr / 0.30 : p.precoVenda;
+      }
+    });
+    // DEBUG — remover depois
+    const amostra = [...map.values()].filter(p => p.nomePa.includes('Abobrinha'));
+    if (amostra.length > 0) {
+      console.log('[DEBUG Abobrinha] custoIngr:', amostra[0].custoIngr, '| precoVenda:', amostra[0].precoVenda, '| cmvPct:', (amostra[0].cmvPct*100).toFixed(1)+'%');
+      console.log('[DEBUG Abobrinha] ingredientes:', JSON.stringify(amostra[0].ingredientes));
+    }
+    const cmvMediaDebug = [...map.values()].filter(p=>p.precoVenda>0).map(p=>p.cmvPct);
+    console.log('[DEBUG CMV médio]', (cmvMediaDebug.reduce((s,v)=>s+v,0)/cmvMediaDebug.length*100).toFixed(1)+'% de', cmvMediaDebug.length, 'produtos');
+    return [...map.values()];
+  }, [fichas]);
+
+  // ── Filtros aplicados ──────────────────────────────────
+  const produtosFiltrados = useMemo(() =>
+    produtosUnicos.filter(r =>
+      (filtroCat === 'Todas' || (Array.isArray(filtroCat) ? filtroCat.includes(r.categoria) : r.categoria === filtroCat))
+    ),
+  [produtosUnicos, filtroCat]);
+
+  const historicoFiltrado = useMemo(() =>
+    historico.filter(r =>
+      (filtroLoja  === 'Todas' || r.loja  === filtroLoja) &&
+      (filtroCanal === 'Todos' || r.canal === filtroCanal) &&
+      (filtroCat === 'Todas' || (Array.isArray(filtroCat) ? filtroCat.includes(r.categoria) : r.categoria === filtroCat))
+    ),
+  [historico, filtroLoja, filtroCanal, filtroCat]);
+
+  const desperdicioFiltrado = useMemo(() =>
+    desperdicio.filter(r =>
+      r.unidade &&
+      (filtroLoja === 'Todas' || r.unidade === filtroLoja) &&
+      (filtroMes  === 'Todos' || r.mes === filtroMes)
+    ),
+  [desperdicio, filtroLoja, filtroMes]);
+
+  // ── Semanas disponíveis nas vendas ────────────────────────
+  const semanasDisponiveis = useMemo(() => {
+    const sems = [...new Set(vendas.map(r => r.semanaISO || '').filter(Boolean))].sort().reverse();
+    return sems;
+  }, [vendas]);
+
+  // ── Vendas filtradas ──────────────────────────────────────
+  const vendasFiltradas = useMemo(() =>
+    vendas.filter(r =>
+      (filtroLoja  === 'Todas' || r.loja  === filtroLoja) &&
+      (filtroCanal === 'Todos' || r.canal === filtroCanal) &&
+      (filtroPeriodo === 'Todos' || r.periodo === (filtroPeriodo === 'Almoço' ? 'almoco' : 'jantar'))
+    ),
+  [vendas, filtroLoja, filtroCanal, filtroPeriodo]);
+
+  // ── Volume × CMV cruzado (vendas + ficha técnica) ─────────
+  const volumePorProduto = useMemo(() => {
+    // Agrupa vendas por SKU
+    const vendaMap = {};
+    vendasFiltradas.forEach(v => {
+      const sku = v.productSku;
+      if (!sku) return;
+      if (!vendaMap[sku]) vendaMap[sku] = { qtd: 0, receita: 0, nome: v.productName, categoria: v.productCategory };
+      const qtd = v.count || 0;
+      const valorUnit = v.unitValue || 0;
+      const desconto  = v.discountValue || 0;
+      vendaMap[sku].qtd     += qtd;
+      vendaMap[sku].receita += Math.max(0, valorUnit - desconto) * qtd;
+    });
+    console.log('[Volume] SKUs com venda:', Object.keys(vendaMap).length, '| Total itens:', Object.values(vendaMap).reduce((s,v)=>s+v.qtd,0));
+
+    // Cruza com ficha técnica pelo SKU ZIG (respeitando filtro de categoria)
+    return produtosFiltrados.map(p => {
+      const venda = vendaMap[p.skuZig] || { qtd: 0, receita: 0 };
+      const custoTotal  = venda.qtd * p.custoIngr;
+      const receitaReal = venda.receita;
+      const cmvReal     = receitaReal > 0 ? custoTotal / receitaReal : p.cmvPct;
+      const margem      = receitaReal > 0 ? (receitaReal - custoTotal) / receitaReal : p.margemContribPct;
+      return {
+        codPa:        p.codPa,
+        skuZig:       p.skuZig,
+        nomePa:       p.nomePa,
+        categoria:    p.categoria,
+        subcategoria: p.subcategoria,
+        precoVenda:   p.precoVenda,
+        custoUnit:    p.custoIngr,
+        cmvTeorico:   p.cmvPct,
+        qtdVendida:   venda.qtd,
+        receitaReal,
+        custoTotal,
+        cmvReal,
+        margem,
+        temVenda:     venda.qtd > 0,
+      };
+    }).sort((a, b) => b.custoTotal - a.custoTotal);
+  }, [produtosFiltrados, vendasFiltradas]);
+
+  // ── KPIs home ─────────────────────────────────────────
+  const kpis = useMemo(() => {
+    // CMV atual vem direto das fichas técnicas (fonte mais confiável)
+    // Só produtos com preço de venda — evita zeros puxarem a média para baixo
+    const comPreco  = produtosFiltrados.filter(r => r.precoVenda > 0);
+    const cmvAtual  = avg(comPreco.map(r => r.cmvPct));
+
+    // Delta vem do histórico se disponível
+    const semanas  = [...new Set(historico.map(r => r.semanaISO))].sort();
+    const semAtual = semanas.at(-1) ?? '';
+    const semAnt   = semanas.at(-2) ?? '';
+    const dadosAnt = historico.filter(r => r.semanaISO === semAnt);
+    const cmvAnt   = dadosAnt.length > 0
+      ? avg(dadosAnt.map(r => r.cmvMedio))
+      : cmvAtual;
+    const deltaCMV = cmvAtual - cmvAnt;
+
+    const criticos = comPreco.filter(r => r.cmvPct > 1).length;
+    const atencao  = comPreco.filter(r => r.cmvPct >= META_CMV && r.cmvPct < 1).length;
+    const okCount  = comPreco.filter(r => r.cmvPct < META_CMV).length;
+    const margem   = avg(comPreco.map(r => r.margemContribPct));
+    const totalDesp = desperdicioFiltrado.reduce((s, r) => s + r.custoTotal, 0);
+
+    return {
+      cmvAtual, cmvAnt, deltaCMV,
+      criticos, atencao, okCount,
+      totalDesp, margem, semAtual,
+    };
+  }, [produtosFiltrados, historico, desperdicioFiltrado]);
+
+  // ── Evolução semanal CMV ───────────────────────────────
+  // ── Evolução semanal CMV (do historico_cmv) ───────────────
+  const evolucaoCMV = useMemo(() => {
+    // Usa history.json do inventário em vez das abas da planilha
+    const snapshots = [...history].sort((a, b) => new Date(a.ts) - new Date(b.ts));
+    return snapshots.map(snap => {
+      const fichas = Object.values(snap.snap?.fichas || {});
+      const comPreco = fichas.filter(f => f.preco > 0);
+      const cmv = comPreco.length > 0
+        ? comPreco.reduce((s,f) => s + (f.cmv||0), 0) / comPreco.length
+        : 0;
+      const data = new Date(snap.ts);
+      const semana = `W${String(data.getMonth()+1).padStart(2,'0')}/${String(data.getDate()).padStart(2,'0')}`;
+      return { semana, cmv, data: snap.ts };
+    });
+  }, [history]);Context, useContext, useState, useEffect, useMemo } from 'react';
+import { loadCMVData } from '../data/loader';
+import { META_CMV, LOJAS_ATIVAS } from '../data/config';
+
+const Ctx = createContext(null);
+
+const MESES_ORDER = ['janeiro','fevereiro','março','abril','maio','junho',
+                     'julho','agosto','setembro','outubro','novembro','dezembro'];
+
+function avg(arr) { return arr.length ? arr.reduce((s,v)=>s+v,0)/arr.length : 0; }
+
+export function CMVProvider({ children }) {
+  const [fichas,      setFichas]      = useState([]);
+  const [historico,   setHistorico]   = useState([]);
+  const [desperdicio, setDesperdicio] = useState([]);
+  const [vendas,     setVendas]     = useState([]);
+  const [histProd,   setHistProd]   = useState([]);
+  const [histComp,   setHistComp]   = useState([]);
+  const [parametros, setParametros] = useState({ taxa_ifood: 24.8, embalagem_padrao: 3.0 });
+  const [history,    setHistory]    = useState([]);
+  const [loading,     setLoading]     = useState(true);
+  const [error,       setError]       = useState(null);
+
+  // ── Filtros ────────────────────────────────────────────
+  const [filtroLoja,    setFiltroLoja]    = useState('Todas');
+  const [filtroCanal,   setFiltroCanal]   = useState('CASA');
+  const [filtroCat,     setFiltroCat]     = useState('Todas');
+  const [filtroMes,     setFiltroMes]     = useState('Todos');
+  const [filtroPeriodo, setFiltroPeriodo] = useState('Todos'); // Todos | Almoço | Jantar/Noite
+  const [filtroSemana,  setFiltroSemana]  = useState('atual'); // atual | anterior | 2semanas
+
+  useEffect(() => {
+    loadCMVData()
+      .then(({ fichas, historico, histProd, histComp, desperdicio, vendas, parametros, history }) => {
+        setFichas(fichas);
+        setHistorico(historico);
+        setDesperdicio(desperdicio);
+        setVendas(vendas || []);
+        setHistProd(histProd || []);
+        setHistComp(histComp || []);
+        setParametros(parametros || { taxa_ifood: 24.8, embalagem_padrao: 3.0 });
+        setHistory(history || []);
         setLoading(false);
       })
       .catch(e => { setError(e.message); setLoading(false); });
@@ -357,7 +600,7 @@ export function CMVProvider({ children }) {
       desperdicio: desperdicioFiltrado,
       desperdicioRaw: desperdicio,
       // Derivados
-      kpis, evolucaoCMV, variacaoSemanal, variacaoComponentes, volumePorProduto, vendasFiltradas, histProd, histComp, parametros,
+      kpis, evolucaoCMV, variacaoSemanal, variacaoComponentes, volumePorProduto, vendasFiltradas, histProd, histComp, parametros, history,
       desperdicioByUnidade, desperdicioByClassificacao,
       margemPorCategoria,
       // Filtros
