@@ -164,12 +164,10 @@ export function CMVProvider({ children }) {
 
   // ── KPIs ──────────────────────────────────────────────────
   const kpis = useMemo(() => {
-    // CMV médio teórico ponderado (soma custos / soma preços) — só cardápio=Sim com preço
-    const comPreco = produtosFiltrados.filter(r => r.precoVenda > 0 && r.cardapio === 'Sim');
-    const somaCustos = comPreco.reduce((s, r) => s + r.custoIngr, 0);
-    const somaPrecos = comPreco.reduce((s, r) => s + r.precoVenda, 0);
-    const cmvAtual   = somaPrecos > 0 ? somaCustos / somaPrecos : 0;
-    const margem     = avg(comPreco.map(r => r.margemContribPct));
+    // CMV médio teórico — média simples dos CMVs individuais
+    const comPreco = produtosFiltrados.filter(r => r.precoVenda > 0);
+    const cmvAtual = avg(comPreco.map(r => r.cmvPct));
+    const margem   = avg(comPreco.map(r => r.margemContribPct));
     const criticos   = comPreco.filter(r => r.cmvPct >= 0.80).length;
     const atencao    = comPreco.filter(r => r.cmvPct >= 0.35 && r.cmvPct < 0.80).length;
     const okCount    = comPreco.filter(r => r.cmvPct < 0.35).length;
