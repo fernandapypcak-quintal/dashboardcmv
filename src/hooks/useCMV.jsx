@@ -239,13 +239,7 @@ export function CMVProvider({ children }) {
       const semana = `W${String(data.getMonth()+1).padStart(2,'0')}/${String(data.getDate()).padStart(2,'0')}`;
       return { semana, cmv, data: snap.ts };
     });
-  }, [history]);Context, useContext, useState, useEffect, useMemo } from 'react';
-import { loadCMVData } from '../data/loader';
-import { META_CMV, LOJAS_ATIVAS } from '../data/config';
-
-const Ctx = createContext(null);
-
-const MESES_ORDER = ['janeiro','fevereiro','março','abril','maio','junho',
+  }, [history]);
                      'julho','agosto','setembro','outubro','novembro','dezembro'];
 
 function avg(arr) { return arr.length ? arr.reduce((s,v)=>s+v,0)/arr.length : 0; }
