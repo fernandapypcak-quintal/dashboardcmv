@@ -24,18 +24,20 @@ const PAGES = {
 
 function Inner() {
   const [page, setPage] = useState('home');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const { loading, error } = useCMV();
   const Page = PAGES[page] ?? Home;
 
   return (
     <div className="flex h-screen overflow-hidden bg-surface-base relative">
-      <Sidebar activePage={page} onPageChange={setPage}/>
-      {/* Mobile overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 bg-black/40 z-30 md:hidden" onClick={() => setSidebarOpen(false)}/>
       )}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header activePage={page}/>
+      <div className={`fixed md:relative z-40 md:z-auto h-full transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+        <Sidebar activePage={page} onPageChange={p => { setPage(p); setSidebarOpen(false); }}/>
+      </div>
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        <Header activePage={page} onMenuClick={() => setSidebarOpen(o => !o)}/>
         <main className="flex-1 overflow-y-auto">
           {loading ? (
             <div className="flex items-center justify-center h-full">
