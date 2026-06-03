@@ -19,7 +19,7 @@ export default function Sidebar({ activePage, onPageChange }) {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
-    <aside className={`flex flex-col bg-white border-r border-surface-border shrink-0 transition-all duration-300 ${collapsed ? 'w-16' : 'w-56'}`}
+    <aside className={`flex flex-col bg-white border-r border-surface-border shrink-0 transition-all duration-300 h-full ${collapsed ? 'w-16' : 'w-56'}`}
       style={{minHeight:'100vh'}}>
 
       {/* Logo */}
