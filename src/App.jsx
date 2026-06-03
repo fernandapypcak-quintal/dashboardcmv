@@ -28,8 +28,12 @@ function Inner() {
   const Page = PAGES[page] ?? Home;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-surface-base">
+    <div className="flex h-screen overflow-hidden bg-surface-base relative">
       <Sidebar activePage={page} onPageChange={setPage}/>
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 bg-black/40 z-30 md:hidden" onClick={() => setSidebarOpen(false)}/>
+      )}
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header activePage={page}/>
         <main className="flex-1 overflow-y-auto">

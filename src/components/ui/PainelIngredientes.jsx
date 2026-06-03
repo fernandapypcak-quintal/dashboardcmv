@@ -85,7 +85,7 @@ export default function PainelIngredientes({ produto, onClose }) {
   return (
     <>
       <div className="fixed inset-0 bg-black/20 z-40" onClick={onClose}/>
-      <div className="fixed top-0 right-0 h-full w-[520px] bg-white shadow-2xl z-50 flex flex-col overflow-hidden">
+      <div className="fixed top-0 right-0 h-full w-full md:w-[520px] bg-white shadow-2xl z-50 flex flex-col overflow-hidden">
 
         {/* Header */}
         <div className="px-6 py-5 border-b border-surface-border shrink-0">
