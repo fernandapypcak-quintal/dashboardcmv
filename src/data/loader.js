@@ -3,6 +3,27 @@ import { APPS_SCRIPT_URL } from './config';
 const n = v => parseFloat(String(v ?? '').replace(',', '.')) || 0;
 const s = v => String(v ?? '').trim();
 
+// Normaliza período — compatível com valores antigos e novos
+const normPeriodo = v => {
+  const p = String(v || '').toLowerCase().trim().normalize('NFD').replace(/[̀-ͯ]/g,'');
+  if (p.includes('almoco') || p.includes('almoço')) return 'Almoço';
+  if (p.includes('jantar') || p.includes('noite')) return 'Jantar/Noite';
+  return 'Todos';
+};
+
+// Normaliza loja — remove acentos inconsistentes e abreviações
+const normLoja = v => {
+  const m = {
+    'TATUAPE': 'TATUAPÉ', 'TATUAPÉ': 'TATUAPÉ',
+    'SANTO ANDRE': 'SANTO ANDRÉ', 'SANTO ANDRÉ': 'SANTO ANDRÉ',
+    'V. MARIANA': 'VILA MARIANA', 'VILA MARIANA': 'VILA MARIANA',
+    'CARINAS': 'CARINAS', 'CARINÃS': 'CARINAS',
+    'CHACARA': 'CHÁCARA', 'CHÁCARA': 'CHÁCARA',
+  };
+  const k = String(v || '').toUpperCase().trim();
+  return m[k] || k;
+};
+
 // ── Fetch genérico ────────────────────────────────────────────
 export async function fetchTipo(tipo, params = {}) {
   try {
@@ -77,7 +98,7 @@ function parseVenda(r) {
     unitValue:       n(r.unit_value),
     count:           n(r.count),
     discountValue:   n(r.discount_value),
-    loja:            s(r.loja),
+    loja:            normLoja(r.loja),
     canal:           s(r.canal),
     periodo:         s(r.periodo),
     semanaISO:       s(r.semana_iso),
@@ -127,6 +148,9 @@ export async function loadCMVData() {
   const fichasComCusto = fichas.filter(r => r.custoIngr > 0);
   const fichasSemCusto = fichas.filter(r => r.custoIngr === 0);
   console.log(`[Loader] fichas com custo: ${fichasComCusto.length} | sem custo: ${fichasSemCusto.length} | exemplo sem custo:`, fichasSemCusto[0]);
+  const vendasComSemana = vendas.filter(v => v.semanaISO);
+  const semanasUnicas = [...new Set(vendas.map(v => v.semanaISO).filter(Boolean))].sort();
+  console.log('[Loader] vendas com semanaISO:', vendasComSemana.length, '| semanas:', semanasUnicas);
   console.log(`[CMV] fichas=${fichas.length} desperdício=${desperdicio.length} vendas=${vendas.length} history=${history.length}`);
   const historicoIngredientes = (resHistIng.historico_ingredientes ?? []).map(r => ({
     data:           String(r.data           || '').slice(0,10),
