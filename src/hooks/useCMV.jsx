@@ -138,9 +138,11 @@ export function CMVProvider({ children }) {
 
   // ── Opções de filtro ───────────────────────────────────────
   const opcoesLojas = useMemo(() => {
-    const lojas = [...new Set(desperdicio.map(r => r.unidade).filter(Boolean))].sort();
+    const dLojas = desperdicio.map(r => r.unidade).filter(Boolean);
+    const vLojas = vendas.map(r => r.loja).filter(Boolean);
+    const lojas  = [...new Set([...dLojas, ...vLojas])].sort();
     return ['Todas', ...lojas];
-  }, [desperdicio]);
+  }, [desperdicio, vendas]);
 
   const opcoesCatContabil = useMemo(() => {
     const cats = [...new Set(produtosUnicos.map(r => r.catContabil).filter(Boolean))].sort();
