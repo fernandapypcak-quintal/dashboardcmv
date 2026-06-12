@@ -107,7 +107,7 @@ function parseVenda(r) {
 
 // ── Entry point ───────────────────────────────────────────────
 export async function loadCMVData() {
-  const [resFichas, resDesperdicio, resVendas, resParams, resHistory, resHistorico, resHistIng] = await Promise.all([
+  const [resFichas, resDesperdicio, resVendas, resParams, resHistory, resHistorico, resHistIng, resBonif] = await Promise.all([
     fetchTipo('fichas'),
     fetchTipo('desperdicio'),
     fetchTipo('vendas'),
@@ -115,6 +115,7 @@ export async function loadCMVData() {
     fetchTipo('history'),
     fetchTipo('historico'),
     fetchTipo('historico_ingredientes'),
+    fetchTipo('bonificacoes'),
   ]);
 
   const fichas = (resFichas.fichas ?? [])
@@ -166,5 +167,14 @@ export async function loadCMVData() {
     custoIngr:      parseFloat(r.custo_ingr) || 0,
   }));
 
-  return { fichas, desperdicio, vendas, parametros, history, historico, historicoIngredientes };
+  const bonificacoes = (resBonif.bonificacoes ?? []).map(r => ({
+    semanaISO:   String(r.semana_iso     || '').trim(),
+    catContabil: String(r.conta_contabil || '').trim(),
+    categoria:   String(r.categoria      || '').trim(),
+    produto:     String(r.produto        || '').trim(),
+    valor:       parseFloat(r.valor)     || 0,
+    obs:         String(r.obs            || '').trim(),
+  }));
+
+  return { fichas, desperdicio, vendas, parametros, history, historico, historicoIngredientes, bonificacoes };
 }

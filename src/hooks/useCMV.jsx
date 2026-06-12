@@ -17,6 +17,7 @@ export function CMVProvider({ children }) {
   const [history,     setHistory]     = useState([]);
   const [historico,   setHistorico]   = useState([]);
   const [histIng,     setHistIng]     = useState([]);
+  const [bonificacoes, setBonificacoes] = useState([]);
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState(null);
 
@@ -30,7 +31,7 @@ export function CMVProvider({ children }) {
 
   useEffect(() => {
     loadCMVData()
-      .then(({ fichas, desperdicio, vendas, parametros, history, historico, historicoIngredientes }) => {
+      .then(({ fichas, desperdicio, vendas, parametros, history, historico, historicoIngredientes, bonificacoes }) => {
         setFichas(fichas || []);
         setDesperdicio(desperdicio || []);
         setVendas(vendas || []);
@@ -38,6 +39,7 @@ export function CMVProvider({ children }) {
         setHistory(history || []);
         setHistorico(historico || []);
         setHistIng(historicoIngredientes || []);
+        setBonificacoes(bonificacoes || []);
         setLoading(false);
       })
       .catch(e => { setError(e.message); setLoading(false); });
@@ -164,6 +166,32 @@ export function CMVProvider({ children }) {
     return sems;
   }, [vendas]);
 
+  // ── Bonificações filtradas por semana ──────────────────────
+  const bonificacoesFiltradas = useMemo(() => {
+    const semAtual = semanasOrdenadas[semanasOrdenadas.length - 1] || '';
+    const semTarget = filtroSemana === 'anterior' ? semanaAnteriorISO
+      : filtroSemana !== 'atual' && filtroSemana ? filtroSemana
+      : semAtual;
+    return bonificacoes.filter(b =>
+      (!semTarget || b.semanaISO === semTarget) &&
+      (filtroCatContabil === 'Todas' || b.catContabil === filtroCatContabil)
+    );
+  }, [bonificacoes, filtroSemana, semanaAnteriorISO, semanasOrdenadas, filtroCatContabil]);
+
+  const totalBonificacoes = useMemo(() =>
+    bonificacoesFiltradas.reduce((s, b) => s + b.valor, 0),
+  [bonificacoesFiltradas]);
+
+  const bonifPorConta = useMemo(() => {
+    const map = {};
+    bonificacoesFiltradas.forEach(b => {
+      const k = b.catContabil || 'Outros';
+      map[k] = (map[k] || 0) + b.valor;
+    });
+    return Object.entries(map).map(([cat, val]) => ({ cat, val }))
+      .sort((a,b) => b.val - a.val);
+  }, [bonificacoesFiltradas]);
+
   // ── KPIs ──────────────────────────────────────────────────
   const kpis = useMemo(() => {
     // CMV médio teórico — média simples dos CMVs individuais
@@ -178,8 +206,15 @@ export function CMVProvider({ children }) {
       .map(u => ({ u, v: desperdicioFiltrado.filter(r=>r.unidade===u).reduce((s,r)=>s+r.custoTotal,0) }))
       .sort((a,b) => b.v-a.v)[0];
 
+    // CMV ajustado com bonificação
+    const totalCusto = comPreco.reduce((s,r) => s + r.custoIngr, 0);
+    const totalPreco = comPreco.reduce((s,r) => s + r.precoVenda, 0);
+    const cmvAjustado = totalPreco > 0
+      ? Math.max(0, (totalCusto - totalBonificacoes) / totalPreco)
+      : cmvAtual;
+
     return {
-      cmvAtual: cmvAtual || 0, cmvAnt: cmvAtual || 0, deltaCMV: 0,
+      cmvAtual: cmvAtual || 0, cmvAjustado: cmvAjustado || 0, cmvAnt: cmvAtual || 0, deltaCMV: 0,
       margem, criticos, atencao, okCount,
       totalDesperdicio: totalDesp,
       maiorDesperdicio: maiorDesp?.u || '—',
@@ -301,6 +336,9 @@ export function CMVProvider({ children }) {
       history,
       historico,
       histIng,
+      bonificacoes: bonificacoesFiltradas,
+      totalBonificacoes,
+      bonifPorConta,
       parametros,
       // Derivados
       kpis, evolucaoCMV, volumePorProduto,

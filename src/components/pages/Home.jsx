@@ -12,6 +12,7 @@ export default function Home({ onPageChange }) {
   const {
     kpis, evolucaoCMV, desperdicioByUnidade,
     produtos, margemPorCategoria, histComp, cmvPorContabil,
+    totalBonificacoes, bonifPorConta,
     setFiltroCat, setFiltroLoja,
   } = useCMV();
 
