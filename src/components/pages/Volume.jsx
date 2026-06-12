@@ -7,7 +7,7 @@ const pct  = v => `${((v||0)*100).toFixed(1)}%`;
 const CORES = ['#97A624','#D9B504','#8C1414','#2980b9','#e67e22','#9b59b6','#009e74'];
 
 export default function Volume() {
-  const { volumePorProduto, vendas: vendasFiltradas } = useCMV();
+  const { volumePorProduto, vendas: vendasFiltradas, totalBonificacoes, bonifPorConta, kpis } = useCMV();
 
   const comVenda    = volumePorProduto.filter(r => r.temVenda);
   const semVenda    = volumePorProduto.filter(r => !r.temVenda);

@@ -168,15 +168,18 @@ export function CMVProvider({ children }) {
 
   // ── Bonificações filtradas por semana ──────────────────────
   const bonificacoesFiltradas = useMemo(() => {
-    const semAtual = semanasOrdenadas[semanasOrdenadas.length - 1] || '';
-    const semTarget = filtroSemana === 'anterior' ? semanaAnteriorISO
+    // Semanas de bonificação disponíveis
+    const semsB = [...new Set(bonificacoes.map(b => b.semanaISO).filter(Boolean))].sort();
+    const semBAtual = semsB[semsB.length - 1] || '';
+    const semBAnt   = semsB[semsB.length - 2] || semBAtual;
+    const semTarget = filtroSemana === 'anterior' ? semBAnt
       : filtroSemana !== 'atual' && filtroSemana ? filtroSemana
-      : semAtual;
+      : semBAtual;
     return bonificacoes.filter(b =>
       (!semTarget || b.semanaISO === semTarget) &&
       (filtroCatContabil === 'Todas' || b.catContabil === filtroCatContabil)
     );
-  }, [bonificacoes, filtroSemana, semanaAnteriorISO, semanasOrdenadas, filtroCatContabil]);
+  }, [bonificacoes, filtroSemana, filtroCatContabil]);
 
   const totalBonificacoes = useMemo(() =>
     bonificacoesFiltradas.reduce((s, b) => s + b.valor, 0),
